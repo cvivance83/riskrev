@@ -15,6 +15,25 @@ const toggle = document.getElementById("themeSwitcher");
 document.addEventListener("DOMContentLoaded", () => {
   const body = document.body;
 
+  // 🤖 TEST RAPIDE DU CHATBOT
+  setTimeout(() => {
+    console.log('🧪 Test des éléments du chatbot après 2 secondes...');
+    const fab = document.getElementById('chatbot-fab');
+    const container = document.getElementById('chatbot-container');
+    
+    if (fab && container) {
+      console.log('✅ Éléments trouvés, test de visibilité...');
+      // Test simple de fonctionnement
+      fab.onclick = function() {
+        console.log('🔵 Test FAB click - Manual');
+        container.classList.toggle('active');
+        console.log('📱 Container classes:', container.classList.toString());
+      };
+    } else {
+      console.error('❌ Éléments de test non trouvés:', { fab: !!fab, container: !!container });
+    }
+  }, 2000);
+
   // 🌙 Gestion du thème
   const toggle = document.getElementById("themeSwitcher");
   const currentTheme = localStorage.getItem("theme");
@@ -43,9 +62,6 @@ document.addEventListener("DOMContentLoaded", () => {
     toggleArrow.textContent = filtersVisible ? "↓" : "→";
   });
 
-  // 🤖 CHATBOT INITIALIZATION
-  initializeChatbot();
-
   fetch("http://portal.dts.corp.local/dpts/contracts/_layouts/15/download.aspx?UniqueId=%7Bb82c6aba%2Dafcc%2D4832%2Dbf94%2D14fc3a832140%7D&Source=http%3A%2F%2Fportal%2Edts%2Ecorp%2Elocal%2Fdpts%2Fcontracts%2FSiteAssets%2FForms%2FAllItems%2Easpx%3FRootFolder%3D%252Fdpts%252Fcontracts%252FSiteAssets%252FGTCS%255FDev%26FolderCTID%3D0x012000D5D1FADBC8861742BDC627451942500C%26View%3D%257B954C25BC%252D2637%252D4D50%252DA01D%252D338BA474858F%257D")
     .then(response => response.json())
     .then(json => {
@@ -56,6 +72,9 @@ document.addEventListener("DOMContentLoaded", () => {
 
       // ✅ Appelle Lucide une fois que le DOM a été mis à jour
       lucide.createIcons();
+      
+      // 🤖 CHATBOT INITIALIZATION - après que tout soit chargé
+      initializeChatbot();
     })
     .catch(err => console.error("Erreur de chargement du JSON :", err));
 
@@ -745,6 +764,8 @@ function getSeverityColor(severity) {
 
 // 🤖 CHATBOT FUNCTIONALITY
 function initializeChatbot() {
+  console.log('🤖 Initialisation du chatbot...');
+  
   const chatbotFab = document.getElementById('chatbot-fab');
   const chatbotContainer = document.getElementById('chatbot-container');
   const chatbotToggle = document.getElementById('chatbot-toggle');
@@ -753,15 +774,32 @@ function initializeChatbot() {
   const chatbotMessages = document.getElementById('chatbot-messages');
   const quickActionBtns = document.querySelectorAll('.quick-action-btn');
 
+  // Vérifications de sécurité
+  if (!chatbotFab || !chatbotContainer || !chatbotToggle || !chatbotInput || !chatbotSend || !chatbotMessages) {
+    console.error('❌ Éléments du chatbot non trouvés:', {
+      fab: !!chatbotFab,
+      container: !!chatbotContainer,
+      toggle: !!chatbotToggle,
+      input: !!chatbotInput,
+      send: !!chatbotSend,
+      messages: !!chatbotMessages
+    });
+    return;
+  }
+
+  console.log('✅ Tous les éléments du chatbot trouvés');
   let chatbotVisible = false;
 
   // Toggle chatbot visibility
   function toggleChatbot() {
+    console.log('🔄 Toggle chatbot, état actuel:', chatbotVisible);
     chatbotVisible = !chatbotVisible;
     chatbotContainer.classList.toggle('active', chatbotVisible);
+    console.log('🔄 Nouvel état:', chatbotVisible);
     
     if (chatbotVisible) {
-      chatbotInput.focus();
+      console.log('👁️ Chatbot ouvert, focus sur input');
+      setTimeout(() => chatbotInput.focus(), 100);
       // Hide notification after opening
       const notification = document.querySelector('.chatbot-notification');
       if (notification) {
@@ -770,20 +808,36 @@ function initializeChatbot() {
     }
   }
 
-  // Event listeners
-  chatbotFab.addEventListener('click', toggleChatbot);
-  chatbotToggle.addEventListener('click', toggleChatbot);
+  // Event listeners avec debug
+  console.log('🔗 Ajout des event listeners...');
+  
+  chatbotFab.addEventListener('click', (e) => {
+    console.log('🔵 Clic sur FAB');
+    e.preventDefault();
+    toggleChatbot();
+  });
+  
+  chatbotToggle.addEventListener('click', (e) => {
+    console.log('🔘 Clic sur Toggle');
+    e.preventDefault();
+    toggleChatbot();
+  });
 
   // Quick action buttons
-  quickActionBtns.forEach(btn => {
-    btn.addEventListener('click', () => {
+  quickActionBtns.forEach((btn, index) => {
+    console.log(`🚀 Quick action button ${index}:`, btn);
+    btn.addEventListener('click', (e) => {
+      e.preventDefault();
       const query = btn.getAttribute('data-query');
+      console.log('🏃 Quick action:', query);
       handleUserMessage(query);
     });
   });
 
   // Send message on button click
-  chatbotSend.addEventListener('click', () => {
+  chatbotSend.addEventListener('click', (e) => {
+    console.log('📤 Clic sur Send');
+    e.preventDefault();
     const message = chatbotInput.value.trim();
     if (message) {
       handleUserMessage(message);
@@ -794,6 +848,7 @@ function initializeChatbot() {
   // Send message on Enter key
   chatbotInput.addEventListener('keypress', (e) => {
     if (e.key === 'Enter' && !e.shiftKey) {
+      console.log('⌨️ Enter pressé');
       e.preventDefault();
       const message = chatbotInput.value.trim();
       if (message) {
@@ -802,14 +857,18 @@ function initializeChatbot() {
       }
     }
   });
+  
+  console.log('✅ Event listeners ajoutés avec succès');
 
   // Handle user messages
   function handleUserMessage(message) {
+    console.log('📤 Message utilisateur:', message);
     addMessage(message, 'user');
     
     // Simulate thinking delay
     setTimeout(() => {
       const response = generateBotResponse(message);
+      console.log('🤖 Réponse bot:', response);
       addMessage(response, 'bot');
     }, 500);
   }
@@ -842,171 +901,73 @@ function initializeChatbot() {
 
   // Generate bot responses based on user input
   function generateBotResponse(message) {
-    const lowerMessage = message.toLowerCase();
+    console.log('🤖 Génération de réponse pour:', message);
     
-    // Risk severity explanations
-    if (lowerMessage.includes('high risk') || lowerMessage.includes('red') || lowerMessage.includes('severity 1')) {
-      return `
-        <p><strong>🔴 High Risk (Level 1)</strong></p>
-        <p>High risk clauses require immediate attention and careful consideration:</p>
-        <ul>
-          <li><strong>Impact:</strong> Could significantly affect contract performance or expose the company to substantial liability</li>
-          <li><strong>Action Required:</strong> Should be reviewed by legal and commercial teams</li>
-          <li><strong>Examples:</strong> Unlimited liability clauses, force majeure exclusions, critical delivery terms</li>
-          <li><strong>Mitigation:</strong> Consider amendments or additional insurance coverage</li>
-        </ul>
-        <p>Always escalate high-risk clauses to senior management for approval.</p>
-      `;
-    }
+    try {
+      const lowerMessage = message.toLowerCase();
+      
+      // Test simple first
+      if (lowerMessage.includes('test') || lowerMessage.includes('hello') || lowerMessage.includes('salut')) {
+        return '<p>🤖 Chatbot opérationnel ! Comment puis-je vous aider avec l\'analyse des risques ?</p>';
+      }
+      
+      // Risk severity explanations
+      if (lowerMessage.includes('high risk') || lowerMessage.includes('red') || lowerMessage.includes('risque élevé')) {
+        return '<p><strong>🔴 Risque Élevé</strong></p><p>Les clauses à risque élevé nécessitent une attention immédiate et une évaluation approfondie par les équipes juridiques et commerciales.</p>';
+      }
 
-    if (lowerMessage.includes('moderate risk') || lowerMessage.includes('yellow') || lowerMessage.includes('severity 2')) {
-      return `
-        <p><strong>🟡 Moderate Risk (Level 2)</strong></p>
-        <p>Moderate risk clauses need careful review but are generally manageable:</p>
-        <ul>
-          <li><strong>Impact:</strong> May affect operations but with limited financial exposure</li>
-          <li><strong>Action Required:</strong> Review terms and assess mitigation options</li>
-          <li><strong>Examples:</strong> Standard liability caps, typical warranty terms, routine compliance requirements</li>
-          <li><strong>Mitigation:</strong> Standard business practices usually sufficient</li>
-        </ul>
-        <p>Document any concerns and ensure operational teams are aware of obligations.</p>
-      `;
-    }
+      if (lowerMessage.includes('moderate risk') || lowerMessage.includes('yellow') || lowerMessage.includes('risque modéré')) {
+        return '<p><strong>🟡 Risque Modéré</strong></p><p>Les clauses à risque modéré nécessitent un examen attentif mais sont généralement gérables avec les pratiques commerciales standard.</p>';
+      }
 
-    if (lowerMessage.includes('low risk') || lowerMessage.includes('green') || lowerMessage.includes('severity 3')) {
-      return `
-        <p><strong>🟢 Low Risk (Level 3)</strong></p>
-        <p>Low risk clauses are generally acceptable with minimal impact:</p>
-        <ul>
-          <li><strong>Impact:</strong> Minimal effect on operations or financial exposure</li>
-          <li><strong>Action Required:</strong> Standard review and documentation</li>
-          <li><strong>Examples:</strong> Administrative procedures, standard reporting requirements</li>
-          <li><strong>Mitigation:</strong> Normal business processes adequate</li>
-        </ul>
-        <p>These clauses typically require no special handling beyond standard compliance.</p>
-      `;
-    }
+      if (lowerMessage.includes('low risk') || lowerMessage.includes('green') || lowerMessage.includes('risque faible')) {
+        return '<p><strong>🟢 Risque Faible</strong></p><p>Les clauses à risque faible sont généralement acceptables avec un impact minimal sur les opérations.</p>';
+      }
 
-    if (lowerMessage.includes('informative') || lowerMessage.includes('blue') || lowerMessage.includes('severity 4') || lowerMessage.includes('severity 0')) {
-      return `
-        <p><strong>🔵 Informative (Level 4/0)</strong></p>
-        <p>Informative items are for awareness only:</p>
-        <ul>
-          <li><strong>Purpose:</strong> Provide context and background information</li>
-          <li><strong>Action Required:</strong> Read and acknowledge</li>
-          <li><strong>Examples:</strong> Definitions, standard market practices, reference materials</li>
-          <li><strong>Impact:</strong> No direct operational or financial implications</li>
-        </ul>
-        <p>These are included for completeness and better understanding of contract context.</p>
-      `;
-    }
+      if (lowerMessage.includes('informative') || lowerMessage.includes('blue') || lowerMessage.includes('informatif')) {
+        return '<p><strong>🔵 Informatif</strong></p><p>Les éléments informatifs sont fournis pour information et contexte uniquement.</p>';
+      }
 
-    // Back to Back explanations
-    if (lowerMessage.includes('back to back') || lowerMessage.includes('b2b')) {
-      return `
-        <p><strong>🔄 Back to Back Contracts</strong></p>
-        <p>Back to back means using the same GTC and Incoterm for both buying and selling:</p>
-        <ul>
-          <li><strong>Purpose:</strong> Minimize risk by aligning contract terms</li>
-          <li><strong>Benefits:</strong> Reduced exposure to conflicting obligations</li>
-          <li><strong>Process:</strong> When one GTC is selected, the system automatically suggests the same for the counterpart</li>
-          <li><strong>Considerations:</strong> May limit flexibility but provides better risk control</li>
-        </ul>
-        <p>Enable the "Back to Back" checkbox to automatically synchronize GTC selections.</p>
-      `;
-    }
+      // Back to Back explanations
+      if (lowerMessage.includes('back to back') || lowerMessage.includes('b2b') || lowerMessage.includes('dos-à-dos')) {
+        return '<p><strong>🔄 Contrats Dos-à-Dos</strong></p><p>Utiliser les mêmes GTC et Incoterms pour l\'achat et la vente afin de minimiser les risques en alignant les termes contractuels.</p>';
+      }
 
-    // GTC explanations
-    if (lowerMessage.includes('gtc') || lowerMessage.includes('general terms')) {
-      return `
-        <p><strong>📋 General Terms and Conditions (GTCs)</strong></p>
-        <p>GTCs are standardized contract templates that define:</p>
-        <ul>
-          <li><strong>Scope:</strong> General obligations, rights, and procedures</li>
-          <li><strong>Risk Allocation:</strong> How risks are distributed between parties</li>
-          <li><strong>Operational Terms:</strong> Delivery, payment, and performance requirements</li>
-          <li><strong>Legal Framework:</strong> Dispute resolution and governing law</li>
-        </ul>
-        <p>Different GTCs may have varying risk profiles for the same transaction type. Use this tool to compare and understand the implications of each GTC selection.</p>
-      `;
-    }
+      // GTC explanations
+      if (lowerMessage.includes('gtc') || lowerMessage.includes('general terms')) {
+        return '<p><strong>📋 Conditions Générales (GTCs)</strong></p><p>Les GTCs sont des modèles de contrats standardisés qui définissent les obligations, droits et procédures générales.</p>';
+      }
 
-    // Incoterms explanations
-    if (lowerMessage.includes('incoterm') || lowerMessage.includes('fob') || lowerMessage.includes('cif') || lowerMessage.includes('dap')) {
-      return `
-        <p><strong>🚢 Incoterms Explained</strong></p>
-        <p>Incoterms define the distribution of costs, risks, and responsibilities:</p>
-        <ul>
-          <li><strong>FOB:</strong> Free on Board - Seller delivers when goods pass ship's rail</li>
-          <li><strong>CIF:</strong> Cost, Insurance & Freight - Seller pays for shipping and insurance</li>
-          <li><strong>CFR:</strong> Cost & Freight - Seller pays freight but not insurance</li>
-          <li><strong>DAP:</strong> Delivered at Place - Seller delivers to named destination</li>
-        </ul>
-        <p>Different Incoterms affect risk transfer points and cost responsibilities. Select appropriate terms based on your risk appetite and operational capabilities.</p>
-      `;
-    }
+      // Incoterms explanations
+      if (lowerMessage.includes('incoterm') || lowerMessage.includes('fob') || lowerMessage.includes('cif') || lowerMessage.includes('dap')) {
+        return '<p><strong>🚢 Incoterms</strong></p><p>Les Incoterms définissent la répartition des coûts, risques et responsabilités. FOB, CIF, CFR, DAP ont des points de transfert de risque différents.</p>';
+      }
 
-    // Amendment guidance
-    if (lowerMessage.includes('amendment') || lowerMessage.includes('special condition')) {
-      return `
-        <p><strong>📝 Contract Amendments</strong></p>
-        <p>Amendments modify standard GTC terms to address specific risks:</p>
-        <ul>
-          <li><strong>Purpose:</strong> Tailor contracts to specific transaction requirements</li>
-          <li><strong>Implementation:</strong> Add special conditions that override standard terms</li>
-          <li><strong>Review:</strong> Ensure amendments are clear and legally sound</li>
-          <li><strong>Documentation:</strong> Copy amendments using the built-in copy buttons</li>
-        </ul>
-        <p>Use the amendment summary sections to review all proposed changes before finalizing contracts.</p>
-      `;
-    }
+      // Amendment guidance
+      if (lowerMessage.includes('amendment') || lowerMessage.includes('amendement') || lowerMessage.includes('condition spéciale')) {
+        return '<p><strong>📝 Amendements de Contrat</strong></p><p>Les amendements modifient les termes GTC standards pour adresser des risques spécifiques. Utilisez les boutons de copie intégrés.</p>';
+      }
 
-    // How to use the tool
-    if (lowerMessage.includes('how to') || lowerMessage.includes('help') || lowerMessage.includes('guide')) {
-      return `
-        <p><strong>🎯 How to Use This Tool</strong></p>
-        <p>Follow these steps for effective risk analysis:</p>
-        <ol>
-          <li><strong>Select GTCs:</strong> Choose your buying and selling GTCs</li>
-          <li><strong>Choose Incoterms:</strong> Select applicable delivery terms</li>
-          <li><strong>Filter by Risk:</strong> Click severity pills to focus on specific risk levels</li>
-          <li><strong>Review Clauses:</strong> Examine highlighted clauses and their risk implications</li>
-          <li><strong>Use Amendments:</strong> Copy suggested amendments for contract modifications</li>
-          <li><strong>Enable Back-to-Back:</strong> For simplified risk management</li>
-        </ol>
-        <p>The tool automatically sorts results by risk level (red, yellow, green, blue) for easy prioritization.</p>
-      `;
-    }
+      // How to use the tool
+      if (lowerMessage.includes('help') || lowerMessage.includes('aide') || lowerMessage.includes('comment')) {
+        return '<p><strong>🎯 Comment Utiliser cet Outil</strong></p><p>1. Sélectionnez vos GTCs<br>2. Choisissez les Incoterms<br>3. Filtrez par niveau de risque<br>4. Examinez les clauses<br>5. Copiez les amendements</p>';
+      }
 
-    // Department/Category guidance
-    if (lowerMessage.includes('department') || lowerMessage.includes('category') || lowerMessage.includes('sts') || lowerMessage.includes('logistics')) {
-      return `
-        <p><strong>🏢 Department Categories</strong></p>
-        <p>Clauses are organized by relevant departments:</p>
-        <ul>
-          <li><strong>STS:</strong> Ship-to-Ship operations and marine logistics</li>
-          <li><strong>Logistics:</strong> Transportation and delivery coordination</li>
-          <li><strong>Commercial:</strong> Pricing, payment, and business terms</li>
-          <li><strong>Legal:</strong> Compliance, liability, and dispute resolution</li>
-          <li><strong>Operations:</strong> Technical specifications and performance standards</li>
-        </ul>
-        <p>Filter by department to focus on clauses relevant to your role and responsibilities.</p>
-      `;
-    }
-
-    // Default response for unrecognized queries
-    return `
-      <p>I understand you're asking about: "<em>${message}</em>"</p>
-      <p>I can help you with:</p>
+      // Default response for unrecognized queries
+      return `<p>Je comprends que vous demandez: "<em>${message}</em>"</p>
+      <p>Je peux vous aider avec:</p>
       <ul>
-        <li>🔴 Risk severity levels (High, Moderate, Low, Informative)</li>
-        <li>📋 GTC comparisons and implications</li>
-        <li>🚢 Incoterm explanations (FOB, CIF, CFR, DAP)</li>
-        <li>🔄 Back-to-back contract strategies</li>
-        <li>📝 Amendment and special condition guidance</li>
-        <li>🎯 How to use this risk analysis tool</li>
+        <li>🔴 Niveaux de risque (Élevé, Modéré, Faible, Informatif)</li>
+        <li>📋 Comparaisons de GTC et implications</li>
+        <li>🚢 Explications Incoterms (FOB, CIF, CFR, DAP)</li>
+        <li>🔄 Stratégies de contrats dos-à-dos</li>
+        <li>📝 Guide des amendements et conditions spéciales</li>
+        <li>🎯 Comment utiliser cet outil d'analyse des risques</li>
       </ul>
-      <p>Try asking about any of these topics, or use the quick action buttons below!</p>
-    `;
+      <p>Essayez de poser une question sur ces sujets, ou utilisez les boutons d'action rapide!</p>`;
+    } catch (error) {
+      console.error('❌ Erreur dans generateBotResponse:', error);
+      return `<p>Désolé, une erreur s'est produite. Essayez de reformuler votre question.</p>`;
+    }
   }
 }

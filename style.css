@@ -1510,3 +1510,85 @@ body.dark-mode .copy-icon {
 .dark-mode .tooltip-incoterms {
   background: linear-gradient(135deg, #d35400, #a04000);
 }
+
+/* 📝 STYLES POUR LA ZONE COPY DANS LE GAP */
+.row {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr 1fr;
+  gap: 40px;
+  align-items: stretch;
+  border-top: 1px solid #ddd;
+  background: #fff;
+}
+
+.row-copy-zone {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 8px;
+  background: rgba(52, 152, 219, 0.05);
+  border-radius: 8px;
+  border: 1px dashed rgba(52, 152, 219, 0.2);
+}
+
+.gap-copy {
+  min-width: 32px;
+  height: 28px;
+  font-size: 9px;
+  padding: 4px 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+}
+
+.gap-copy.buyer-copy {
+  background: linear-gradient(135deg, #2ecc71, #27ae60);
+}
+
+.gap-copy.seller-copy {
+  background: linear-gradient(135deg, #e74c3c, #c0392b);
+}
+
+.gap-copy span {
+  font-size: 7px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+}
+
+/* Animations pour les boutons copy */
+.copy-success {
+  transform: scale(1.1) !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3) !important;
+  animation: successPulse 0.6s ease !important;
+}
+
+@keyframes successPulse {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.15); }
+  100% { transform: scale(1.1); }
+}
+
+.modern-btn.copy-success {
+  animation: successSlide 0.5s ease !important;
+}
+
+@keyframes successSlide {
+  0% { transform: translateX(0); }
+  25% { transform: translateX(4px); }
+  50% { transform: translateX(-2px); }
+  100% { transform: translateX(0); }
+}
+
+/* Dark mode pour la zone copy */
+.dark-mode .row-copy-zone {
+  background: rgba(52, 152, 219, 0.1);
+  border-color: rgba(52, 152, 219, 0.3);
+}
+
+.dark-mode .row {
+  background: #2c3e50;
+  border-top-color: #34495e;
+}

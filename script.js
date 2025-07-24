@@ -232,10 +232,37 @@ console.log("⛔ Clauses filtrées car Back to Back = Yes :", data.filter(d => !
       return true; // Laisser passer, sera filtré par matchIncoterm
     }
     
-    // Vérifier si au moins un des Incoterms sélectionnés correspond aux détectés
+    // ✨ NOUVELLE LOGIQUE : La clause doit contenir AU MOINS UN des Incoterms sélectionnés
     return selectedIncotermValues.some(selected => 
       detectedIncoterms.includes(selected.toUpperCase())
     );
+  }
+
+  // 📝 Filtre le texte pour ne garder que les parties liées aux Incoterms sélectionnés
+  function filterTextByIncoterms(text, selectedIncoterms) {
+    if (!text || !selectedIncoterms.length) return text;
+    
+    const detectedIncoterms = detectIncoterms(text);
+    
+    // Si aucun Incoterm détecté, retourner le texte original
+    if (detectedIncoterms.length === 0) return text;
+    
+    let filteredText = text;
+    
+    // Pour chaque Incoterm détecté
+    detectedIncoterms.forEach(incoterm => {
+      const incotermText = extractIncotermText(text, incoterm);
+      
+      // Si cet Incoterm n'est pas sélectionné, supprimer sa partie
+      if (!selectedIncoterms.includes(incoterm.toUpperCase())) {
+        // Pattern pour supprimer la section entière de cet Incoterm
+        const removePattern = new RegExp(`\\b${incoterm}(?:\\/[A-Z]+)*\\s*[\\(\\)]?\\s*:[^\\n]*(?:\\n(?!\\b(?:CIF|CFR|DAP|FOB))[^\\n]*)*`, 'gi');
+        filteredText = filteredText.replace(removePattern, '').trim();
+      }
+    });
+    
+    // Nettoyer les espaces et lignes vides en trop
+    return filteredText.replace(/\n\s*\n/g, '\n').trim();
   }
   function copyToClipboard(text, button) {
     try {
@@ -270,16 +297,26 @@ console.log("⛔ Clauses filtrées car Back to Back = Yes :", data.filter(d => !
     const originalHTML = button.innerHTML;
     const originalClass = button.className;
     
-    button.classList.add('success');
-    button.innerHTML = '<i data-lucide="check"></i>';
+    // Animation pour tous les types de boutons copy
+    button.classList.add('copy-success');
+    
+    if (button.classList.contains('modern-btn')) {
+      // Pour les boutons modern-btn
+      button.innerHTML = '<i data-lucide="check"></i> Copié !';
+      button.style.background = 'linear-gradient(135deg, #27ae60, #229954)';
+    } else {
+      // Pour les autres boutons copy
+      button.innerHTML = '<i data-lucide="check"></i>';
+    }
     
     lucide.createIcons();
 
     setTimeout(() => {
       button.className = originalClass;
       button.innerHTML = originalHTML;
+      button.style.background = ''; // Reset le style
       lucide.createIcons();
-    }, 2000);
+    }, 2500);
   }
 
 
@@ -644,7 +681,26 @@ setupDropdownToggle(clauseTypeLabel, clauseTypeContainer);
           updateDisplay();
         });
 
+        // 📝 Zone des boutons copy dans le gap
+        const copyZone = document.createElement("div");
+        copyZone.className = "row-copy-zone";
+        
+        // Bouton copy pour Buyer (gauche)
+        if (cellB.copyData) {
+          const copyBtnB = createCopyButton(cellB.copyData.text, 'buyer');
+          copyZone.appendChild(copyBtnB);
+        }
+        
+        // Bouton copy pour Seller (droite)  
+        if (cellA.copyData) {
+          const copyBtnA = createCopyButton(cellA.copyData.text, 'seller');
+          copyZone.appendChild(copyBtnA);
+        }
+
         row.appendChild(cellB);
+        if (cellB.copyData || cellA.copyData) {
+          row.appendChild(copyZone);
+        }
         row.appendChild(cellClause);
         row.appendChild(cellA);
         body.appendChild(row);
@@ -676,20 +732,37 @@ setupDropdownToggle(clauseTypeLabel, clauseTypeContainer);
     const isValidRiskDescription = riskDescription && !isEmptyValue(riskDescription);
     const isValidDisplayText = displayText && !isEmptyValue(displayText);
     const cleanedAmendment = isValidAmendment ? cleanAmendmentText(amendment) : "";
+    
+    // 🚢 Obtenir les Incoterms sélectionnés pour le filtrage
+    const selectedIncotermValues = side === 'seller' 
+      ? Array.from(document.getElementById("incotermSellerSelect").selectedOptions).map(opt => opt.value.toUpperCase())
+      : Array.from(document.getElementById("incotermBuyerSelect").selectedOptions).map(opt => opt.value.toUpperCase());
 
     if (isValidDisplayText) {
       const container = document.createElement("div");
       container.className = "content-container";
       
-      // 🚢 Détecter les Incoterms dans le contenu
-      const allContent = [displayText, cleanedAmendment, riskDescription].join(" ");
+      // 📝 Filtrer le texte selon les Incoterms sélectionnés
+      const filteredDisplayText = filterTextByIncoterms(displayText, selectedIncotermValues);
+      const filteredAmendment = filterTextByIncoterms(cleanedAmendment, selectedIncotermValues);
+      
+      // Debug pour vérifier le filtrage
+      debugIncotermFilter(displayText, selectedIncotermValues, filteredDisplayText);
+      debugIncotermFilter(cleanedAmendment, selectedIncotermValues, filteredAmendment);
+      
+      // 🚢 Détecter les Incoterms dans le contenu filtré
+      const allContent = [filteredDisplayText, filteredAmendment, riskDescription].join(" ");
       const detectedIncoterms = detectIncoterms(allContent);
       
-      // Afficher les Incoterms détectés
-      if (detectedIncoterms.length > 0) {
+      // Afficher les Incoterms détectés (seulement ceux qui correspondent aux sélections)
+      const relevantIncoterms = selectedIncotermValues.length > 0 
+        ? detectedIncoterms.filter(term => selectedIncotermValues.includes(term))
+        : detectedIncoterms;
+        
+      if (relevantIncoterms.length > 0) {
         const incotermTags = document.createElement("div");
         incotermTags.className = "incoterm-tags";
-        detectedIncoterms.forEach(incoterm => {
+        relevantIncoterms.forEach(incoterm => {
           const tag = document.createElement("span");
           tag.className = "incoterm-tag";
           tag.textContent = incoterm;
@@ -700,15 +773,15 @@ setupDropdownToggle(clauseTypeLabel, clauseTypeContainer);
       
       const anchor = document.createElement("span");
       anchor.className = "tooltip-anchor";
-      anchor.textContent = displayText;
+      anchor.textContent = filteredDisplayText;
 
-      if (isValidRiskDescription || cleanedAmendment) {
+      if (isValidRiskDescription || filteredAmendment) {
         const tooltip = document.createElement("div");
         tooltip.className = "tooltip-box";
         tooltip.innerHTML = `
-          ${detectedIncoterms.length > 0 ? `<div class="tooltip-incoterms"><strong>🚢 Incoterms:</strong> ${detectedIncoterms.join(', ')}</div>` : ""}
+          ${relevantIncoterms.length > 0 ? `<div class="tooltip-incoterms"><strong>🚢 Incoterms:</strong> ${relevantIncoterms.join(', ')}</div>` : ""}
           ${isValidRiskDescription ? `<div class="tooltip-risk">${riskDescription}</div>` : ""}
-          ${cleanedAmendment ? `<div class="tooltip-amendment"><strong>Special Condition:</strong> ${cleanedAmendment}</div>` : ""}
+          ${filteredAmendment ? `<div class="tooltip-amendment"><strong>Special Condition:</strong> ${filteredAmendment}</div>` : ""}
         `;
         anchor.appendChild(tooltip);
       }
@@ -731,17 +804,13 @@ setupDropdownToggle(clauseTypeLabel, clauseTypeContainer);
       cell.appendChild(placeholder);
     }
 
-    if (cleanedAmendment) {
-      const copyBtn = document.createElement("button");
-      copyBtn.className = "copy-icon";
-      copyBtn.type = "button";
-      copyBtn.title = "Copy amendment";
-      copyBtn.innerHTML = `<i data-lucide="copy"></i>`;
-      copyBtn.addEventListener("click", (e) => {
-        e.stopPropagation();
-        copyToClipboard(cleanedAmendment, copyBtn);
-      });
-      cell.appendChild(copyBtn);
+    // Stocker les données copy pour la gestion dans la row (avec le texte filtré)
+    const finalAmendmentText = selectedIncotermValues.length > 0 ? filteredAmendment : cleanedAmendment;
+    if (finalAmendmentText) {
+      cell.copyData = {
+        text: finalAmendmentText,
+        side: side
+      };
     }
 
     if (severity) {
@@ -861,6 +930,17 @@ setupDropdownToggle(clauseTypeLabel, clauseTypeContainer);
     const match = text.match(pattern);
     
     return match ? match[1].trim() : '';
+  }
+
+  // 🔍 Debug: Log pour vérifier le filtrage des Incoterms
+  function debugIncotermFilter(text, selectedIncoterms, filteredText) {
+    if (text !== filteredText) {
+      console.log('🚢 Filtrage Incoterm:', {
+        original: text,
+        selected: selectedIncoterms,
+        filtered: filteredText
+      });
+    }
   }
 
   // 🤖 Intelligence AI pour l'analyse des clauses
@@ -1049,6 +1129,19 @@ function getSeverityColor(severity) {
     4: "#3498db"   // Blue
   };
   return colors[severity] || "#95a5a6";
+}
+
+function createCopyButton(text, side) {
+  const copyBtn = document.createElement("button");
+  copyBtn.className = `copy-icon gap-copy ${side}-copy`;
+  copyBtn.type = "button";
+  copyBtn.title = `Copier amendment ${side}`;
+  copyBtn.innerHTML = `<i data-lucide="copy"></i><span>${side === 'buyer' ? 'B' : 'S'}</span>`;
+  copyBtn.addEventListener("click", (e) => {
+    e.stopPropagation();
+    copyToClipboard(text, copyBtn);
+  });
+  return copyBtn;
 }
 
 function getRiskRecommendation(riskLevel) {

@@ -528,6 +528,212 @@ h2 {
   }
 }
 
+/* 🤖 STYLES POUR L'ANALYSE AI */
+.clause-content {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.ai-summary {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--accent-color);
+  font-style: italic;
+  margin-bottom: 4px;
+}
+
+.keyword-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin: 4px 0;
+}
+
+.keyword-tag {
+  background: linear-gradient(135deg, var(--accent-color), #2980b9);
+  color: white;
+  padding: 2px 6px;
+  border-radius: 10px;
+  font-size: 10px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.ai-analysis {
+  background: linear-gradient(135deg, #e8f4fd, #d1ecf1);
+  border-left: 3px solid var(--accent-color);
+  padding: 8px;
+  margin: 4px 0;
+  border-radius: 4px;
+  font-size: 12px;
+}
+
+.detected-risk {
+  background: linear-gradient(135deg, #fff3cd, #ffeaa7);
+  border-left: 3px solid #f39c12;
+  padding: 6px;
+  margin: 4px 0;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 500;
+}
+
+.empty-content {
+  color: #7f8c8d;
+  font-style: italic;
+  font-size: 12px;
+}
+
+/* Dark mode pour l'analyse AI */
+.dark-mode .ai-analysis {
+  background: linear-gradient(135deg, #2c3e50, #34495e);
+  color: #ecf0f1;
+  border-left-color: #3498db;
+}
+
+.dark-mode .detected-risk {
+  background: linear-gradient(135deg, #8b6914, #b7950b);
+  color: #f8f9fa;
+  border-left-color: #f39c12;
+}
+
+.dark-mode .ai-summary {
+  color: #74b9ff;
+}
+
+.dark-mode .empty-content {
+  color: #95a5a6;
+}
+
+/* 📝 STYLES POUR LES BOUTONS COPY REPOSITIONNÉS */
+.clause-main-content {
+  flex: 1;
+}
+
+.copy-actions-zone {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+  margin-left: auto;
+  padding-left: 8px;
+}
+
+.copy-btn {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  background: linear-gradient(135deg, var(--accent-color), #2980b9);
+  border: none;
+  border-radius: 6px;
+  padding: 4px 6px;
+  cursor: pointer;
+  color: white;
+  font-size: 10px;
+  font-weight: 600;
+  transition: all 0.2s ease;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+
+.copy-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+}
+
+.copy-btn svg {
+  width: 12px;
+  height: 12px;
+}
+
+.copy-btn span {
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+}
+
+.seller-copy {
+  background: linear-gradient(135deg, #e74c3c, #c0392b);
+}
+
+.buyer-copy {
+  background: linear-gradient(135deg, #2ecc71, #27ae60);
+}
+
+.copy-btn.success {
+  background: linear-gradient(135deg, #27ae60, #229954) !important;
+  transform: scale(1.05);
+}
+
+/* Ajustement de la cellule clause pour accommoder les boutons */
+.cell.clause {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 40px;
+}
+
+/* Dark mode pour les boutons copy */
+.dark-mode .copy-btn {
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
+}
+
+.dark-mode .copy-btn:hover {
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.5);
+}
+
+/* 🏢 STYLES POUR LES AMENDEMENTS PAR DÉPARTEMENT */
+.department-section {
+  margin-bottom: 12px;
+}
+
+.department-header {
+  background: linear-gradient(135deg, var(--accent-color), #2980b9);
+  color: white;
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-weight: 600;
+  font-size: 13px;
+  margin-bottom: 6px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.amendment-item {
+  background: var(--input-bg);
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  padding: 6px 10px;
+  margin: 3px 0;
+  font-size: 12px;
+  line-height: 1.4;
+  border-left: 3px solid var(--accent-color);
+}
+
+.amendment-item:hover {
+  background: var(--bg-color);
+  border-left-color: #e74c3c;
+  transform: translateX(2px);
+  transition: all 0.2s ease;
+}
+
+/* Dark mode pour les amendements par département */
+.dark-mode .department-header {
+  background: linear-gradient(135deg, #34495e, #2c3e50);
+  color: #ecf0f1;
+}
+
+.dark-mode .amendment-item {
+  background: #34495e;
+  border-color: #4a6278;
+  color: #ecf0f1;
+}
+
+.dark-mode .amendment-item:hover {
+  background: #2c3e50;
+  border-left-color: #e74c3c;
+}
 
 /* TITRES DES COLONNES */
 

@@ -214,21 +214,48 @@ console.log("⛔ Clauses filtrées car Back to Back = Yes :", data.filter(d => !
     return false;
   }
   function copyToClipboard(text, button) {
+    try {
+      // Tentative moderne avec navigator.clipboard
+      if (navigator.clipboard && window.isSecureContext) {
+        navigator.clipboard.writeText(text).then(() => {
+          showCopySuccess(button);
+        }).catch(() => {
+          fallbackCopy(text, button);
+        });
+      } else {
+        fallbackCopy(text, button);
+      }
+    } catch (error) {
+      fallbackCopy(text, button);
+    }
+  }
 
+  function fallbackCopy(text, button) {
     const textArea = document.createElement("textarea");
     textArea.value = text;
+    textArea.style.position = "fixed";
+    textArea.style.opacity = "0";
     document.body.appendChild(textArea);
     textArea.select();
     document.execCommand("copy");
     document.body.removeChild(textArea);
+    showCopySuccess(button);
+  }
 
-    button.innerHTML = '<i data-lucide="check" class="check-success"></i>';
+  function showCopySuccess(button) {
+    const originalHTML = button.innerHTML;
+    const originalClass = button.className;
+    
+    button.classList.add('success');
+    button.innerHTML = '<i data-lucide="check"></i>';
+    
     lucide.createIcons();
 
     setTimeout(() => {
-      button.innerHTML = '<i data-lucide="clipboard-copy"></i>';
+      button.className = originalClass;
+      button.innerHTML = originalHTML;
       lucide.createIcons();
-    }, 3000);
+    }, 2000);
   }
 
 
@@ -579,10 +606,53 @@ setupDropdownToggle(clauseTypeLabel, clauseTypeContainer);
         const cellA = createCell(riskA, "seller", severityA);
         const cellB = createCell(riskB, "buyer", severityB);
 
+        // 🎯 Zone centrale avec clause et boutons copy
         const cellClause = document.createElement("div");
         cellClause.className = "cell clause clickable";
-        cellClause.innerHTML = `<strong>${clause}</strong>`;
-        cellClause.addEventListener("click", () => {
+        
+        const clauseContent = document.createElement("div");
+        clauseContent.className = "clause-main-content";
+        clauseContent.innerHTML = `<strong>${clause}</strong>`;
+        cellClause.appendChild(clauseContent);
+        
+        // 📝 Zone des boutons copy à droite
+        const copyActionsZone = document.createElement("div");
+        copyActionsZone.className = "copy-actions-zone";
+        
+        // Bouton copy pour Seller (cellA)
+        if (cellA.copyData) {
+          const copyBtnA = document.createElement("button");
+          copyBtnA.className = "copy-btn seller-copy";
+          copyBtnA.type = "button";
+          copyBtnA.title = "Copier amendment Seller";
+          copyBtnA.innerHTML = `<i data-lucide="copy"></i><span>S</span>`;
+          copyBtnA.addEventListener("click", (e) => {
+            e.stopPropagation();
+            copyToClipboard(cellA.copyData.fullText, copyBtnA);
+          });
+          copyActionsZone.appendChild(copyBtnA);
+        }
+        
+        // Bouton copy pour Buyer (cellB)
+        if (cellB.copyData) {
+          const copyBtnB = document.createElement("button");
+          copyBtnB.className = "copy-btn buyer-copy";
+          copyBtnB.type = "button";
+          copyBtnB.title = "Copier amendment Buyer";
+          copyBtnB.innerHTML = `<i data-lucide="copy"></i><span>B</span>`;
+          copyBtnB.addEventListener("click", (e) => {
+            e.stopPropagation();
+            copyToClipboard(cellB.copyData.fullText, copyBtnB);
+          });
+          copyActionsZone.appendChild(copyBtnB);
+        }
+        
+        cellClause.appendChild(copyActionsZone);
+        
+        cellClause.addEventListener("click", (e) => {
+          // Éviter le conflit avec les boutons copy
+          if (e.target.closest('.copy-btn')) return;
+          
           if (selectedClauseTypes.has(clause)) {
             selectedClauseTypes.delete(clause);
           } else {
@@ -619,42 +689,80 @@ setupDropdownToggle(clauseTypeLabel, clauseTypeContainer);
 
     const amendment = (risk["Abbreviated Amendment"] || "").trim();
     const riskDescription = (risk["Risk Description"] || "").trim();
-    const displayText = risk["Content of the clause"] || "-";
+    const displayText = risk["Content of the clause"] || "";
 
-    const isValidAmendment = amendment && amendment.toLowerCase() !== "nan" && amendment !== "/";
-    const isValidRiskDescription = riskDescription && riskDescription.toLowerCase() !== "nan";
+    const isValidAmendment = amendment && !isEmptyValue(amendment);
+    const isValidRiskDescription = riskDescription && !isEmptyValue(riskDescription);
+    const isValidDisplayText = displayText && !isEmptyValue(displayText);
     const cleanedAmendment = isValidAmendment ? cleanAmendmentText(amendment) : "";
 
-    if (displayText.toLowerCase() !== "nan") {
+    // 🤖 Analyse AI de la clause
+    const aiAnalysis = analyzeClauseWithAI(displayText, risk["Clause Type"]);
+    
+    if (isValidDisplayText) {
+      const contentContainer = document.createElement("div");
+      contentContainer.className = "clause-content";
+      
+      // Résumé intelligent en premier
+      if (aiAnalysis && aiAnalysis.summary) {
+        const summaryEl = document.createElement("div");
+        summaryEl.className = "ai-summary";
+        summaryEl.textContent = aiAnalysis.summary;
+        contentContainer.appendChild(summaryEl);
+      }
+      
       const anchor = document.createElement("span");
       anchor.className = "tooltip-anchor";
       anchor.textContent = displayText;
 
-      if (isValidRiskDescription || cleanedAmendment) {
+      // Keywords tags
+      if (aiAnalysis && aiAnalysis.keywords.length > 0) {
+        const keywordsEl = document.createElement("div");
+        keywordsEl.className = "keyword-tags";
+        aiAnalysis.keywords.forEach(keyword => {
+          const tag = document.createElement("span");
+          tag.className = "keyword-tag";
+          tag.textContent = keyword;
+          keywordsEl.appendChild(tag);
+        });
+        contentContainer.appendChild(keywordsEl);
+      }
+
+      if (isValidRiskDescription || cleanedAmendment || aiAnalysis) {
         const tooltip = document.createElement("div");
         tooltip.className = "tooltip-box";
         tooltip.innerHTML = `
+          ${aiAnalysis ? `<div class="ai-analysis"><strong>🤖 Analyse:</strong> ${aiAnalysis.summary}</div>` : ""}
           ${isValidRiskDescription ? `<div class="tooltip-risk">${riskDescription}</div>` : ""}
-          ${cleanedAmendment ? `<div class="tooltip-amendment"><strong>Special Condition:</strong> ${cleanedAmendment}</div>` : ""}
+          ${cleanedAmendment ? `<div class="tooltip-amendment"><strong>Condition Spéciale:</strong> ${cleanedAmendment}</div>` : ""}
+          ${aiAnalysis && aiAnalysis.detectedRisk ? `<div class="detected-risk"><strong>Risque détecté:</strong> ${getSeverityDisplayLabel(aiAnalysis.detectedRisk)}</div>` : ""}
         `;
         anchor.appendChild(tooltip);
       }
 
-      cell.appendChild(anchor);
+      contentContainer.appendChild(anchor);
+      cell.appendChild(contentContainer);
+    } else if (cleanedAmendment || isValidRiskDescription) {
+      // Si pas de contenu principal mais amendment/description existe
+      const placeholder = document.createElement("span");
+      placeholder.className = "tooltip-anchor empty-content";
+      placeholder.textContent = "Voir détails";
+      
+      const tooltip = document.createElement("div");
+      tooltip.className = "tooltip-box";
+      tooltip.innerHTML = `
+        ${isValidRiskDescription ? `<div class="tooltip-risk">${riskDescription}</div>` : ""}
+        ${cleanedAmendment ? `<div class="tooltip-amendment"><strong>Condition Spéciale:</strong> ${cleanedAmendment}</div>` : ""}
+      `;
+      placeholder.appendChild(tooltip);
+      cell.appendChild(placeholder);
     }
 
-    if (cleanedAmendment) {
-      const copyBtn = document.createElement("button");
-      copyBtn.className = "copy-icon";
-      copyBtn.type = "button";
-      copyBtn.title = "Copy amendment";
-      copyBtn.innerHTML = `<i data-lucide="copy"></i>`;
-      copyBtn.addEventListener("click", (e) => {
-        e.stopPropagation();
-        copyToClipboard(cleanedAmendment, copyBtn);
-      });
-      cell.appendChild(copyBtn);
-    }
+    // 📝 Retourner les données du bouton copy pour l'affichage dans la zone droite
+    cell.copyData = cleanedAmendment ? {
+      amendment: cleanedAmendment,
+      fullText: displayText || riskDescription || cleanedAmendment
+    } : null;
 
     if (severity) {
       const indicator = document.createElement("div");
@@ -669,31 +777,154 @@ setupDropdownToggle(clauseTypeLabel, clauseTypeContainer);
 
 
   function generateAmendmentSummary(dataRows) {
-  let sellerText = "", buyerText = "";
+    // 🏢 Groupement par département/catégorie
+    const sellerByDepartment = {};
+    const buyerByDepartment = {};
 
-  dataRows.forEach(row => {
-    let amendment = row["Abbreviated Amendment"]?.trim();
-    if (!amendment || amendment.toLowerCase() === "nan" || amendment === "/") return;
+    dataRows.forEach(row => {
+      let amendment = row["Abbreviated Amendment"]?.trim();
+      if (!amendment || isEmptyValue(amendment)) return;
 
-    const clauseTitle = row["Clause"] || row["Clause Type"] || "Untitled";
-    amendment = cleanAmendmentText(amendment);
-    const formatted = `<strong>${clauseTitle}</strong>: ${amendment}<br><br>`;
+      const department = row["Clause Category"] || "Autres";
+      const clauseType = row["Clause Type"] || "Clause inconnue";
+      const cleanedAmendment = cleanAmendmentText(amendment);
+      
+      if (!cleanedAmendment) return;
 
-    if (row["Buy/Sell"] === "Sell") sellerText += formatted;
-    if (row["Buy/Sell"] === "Buy") buyerText += formatted;
-  });
+      const formattedAmendment = `- ${clauseType}: ${cleanedAmendment}`;
 
-  ["Top", "Bottom"].forEach(pos => {
-    const sellEl = document.getElementById(`amendmentSummarySell${pos}`);
-    const buyEl = document.getElementById(`amendmentSummaryBuy${pos}`);
-    if (sellEl) sellEl.innerHTML = sellerText.trim();
-    if (buyEl) buyEl.innerHTML = buyerText.trim();
-  });
-}
+      if (row["Buy/Sell"] === "Sell") {
+        if (!sellerByDepartment[department]) sellerByDepartment[department] = [];
+        sellerByDepartment[department].push(formattedAmendment);
+      }
+      
+      if (row["Buy/Sell"] === "Buy") {
+        if (!buyerByDepartment[department]) buyerByDepartment[department] = [];
+        buyerByDepartment[department].push(formattedAmendment);
+      }
+    });
+
+    // 📝 Format HTML par département
+    function formatByDepartment(dataByDept) {
+      let html = "";
+      Object.keys(dataByDept).sort().forEach(dept => {
+        html += `<div class="department-section">`;
+        html += `<div class="department-header">${dept}</div>`;
+        dataByDept[dept].forEach(amendment => {
+          html += `<div class="amendment-item">${amendment}</div>`;
+        });
+        html += `</div><br>`;
+      });
+      return html;
+    }
+
+    const sellerHTML = formatByDepartment(sellerByDepartment);
+    const buyerHTML = formatByDepartment(buyerByDepartment);
+
+    ["Top", "Bottom"].forEach(pos => {
+      const sellEl = document.getElementById(`amendmentSummarySell${pos}`);
+      const buyEl = document.getElementById(`amendmentSummaryBuy${pos}`);
+      if (sellEl) sellEl.innerHTML = sellerHTML;
+      if (buyEl) buyEl.innerHTML = buyerHTML;
+    });
+  }
 
 
+
+  // 🧹 Fonction pour vérifier si une valeur est vide ou inutile
+  function isEmptyValue(value) {
+    if (!value) return true;
+    const cleanValue = value.toString().toLowerCase().trim();
+    const emptyValues = ['nan', 'n/a', 'na', '-', '/', '', 'null', 'undefined', 'none'];
+    return emptyValues.includes(cleanValue);
+  }
+
+  // 🤖 Intelligence AI pour l'analyse des clauses
+  function analyzeClauseWithAI(clauseText, clauseType) {
+    if (!clauseText || isEmptyValue(clauseText)) return null;
+    
+    const analysis = {
+      summary: generateClauseSummary(clauseText, clauseType),
+      detectedRisk: detectRiskLevel(clauseText),
+      keywords: extractKeywords(clauseText, clauseType)
+    };
+    
+    return analysis;
+  }
+
+  function generateClauseSummary(text, type) {
+    const lowerText = text.toLowerCase();
+    const lowerType = (type || "").toLowerCase();
+    
+    // Patterns pour résumer intelligemment
+    if (lowerType.includes('payment') || lowerText.includes('payment') || lowerText.includes('credit')) {
+      return "Conditions de paiement et crédit";
+    }
+    if (lowerType.includes('delivery') || lowerText.includes('delivery') || lowerText.includes('shipping')) {
+      return "Modalités de livraison";
+    }
+    if (lowerType.includes('insurance') || lowerText.includes('insurance')) {
+      return "Couverture d'assurance";
+    }
+    if (lowerType.includes('liability') || lowerText.includes('liability')) {
+      return "Responsabilité et limitations";
+    }
+    if (lowerType.includes('force majeure') || lowerText.includes('force majeure')) {
+      return "Cas de force majeure";
+    }
+    if (lowerType.includes('sts') || lowerText.includes('ship to ship')) {
+      return "Opérations navire-à-navire";
+    }
+    
+    // Résumé générique basé sur les premiers mots
+    const words = text.split(' ').slice(0, 6).join(' ');
+    return words.length > 50 ? words.substring(0, 47) + "..." : words;
+  }
+
+  function detectRiskLevel(text) {
+    const lowerText = text.toLowerCase();
+    
+    // Mots-clés haute priorité (risque élevé)
+    const highRiskKeywords = ['unlimited', 'liability', 'penalty', 'termination', 'breach', 'default', 'force majeure exclusion'];
+    const moderateRiskKeywords = ['limitation', 'caps', 'reasonable', 'standard', 'typical'];
+    const lowRiskKeywords = ['administrative', 'notification', 'routine', 'standard practice'];
+    
+    const highRiskCount = highRiskKeywords.filter(keyword => lowerText.includes(keyword)).length;
+    const moderateRiskCount = moderateRiskKeywords.filter(keyword => lowerText.includes(keyword)).length;
+    const lowRiskCount = lowRiskKeywords.filter(keyword => lowerText.includes(keyword)).length;
+    
+    if (highRiskCount > 0) return "1"; // High
+    if (moderateRiskCount > 0) return "2"; // Moderate
+    if (lowRiskCount > 0) return "3"; // Low
+    
+    return "4"; // Informative par défaut
+  }
+
+  function extractKeywords(text, type) {
+    const keywords = [];
+    const lowerText = text.toLowerCase();
+    
+    // Tags basés sur le contenu
+    const keywordMap = {
+      'Payment': ['payment', 'credit', 'invoice', 'billing', 'financial'],
+      'Shipping': ['delivery', 'transport', 'vessel', 'cargo', 'shipping'],
+      'Insurance': ['insurance', 'coverage', 'claim', 'risk coverage'],
+      'Legal': ['liability', 'breach', 'contract', 'legal', 'compliance'],
+      'Operational': ['operation', 'procedure', 'process', 'technical'],
+      'Time': ['timeline', 'deadline', 'duration', 'period', 'delay']
+    };
+    
+    for (const [tag, words] of Object.entries(keywordMap)) {
+      if (words.some(word => lowerText.includes(word))) {
+        keywords.push(tag);
+      }
+    }
+    
+    return keywords;
+  }
 
   function cleanAmendmentText(text) {
+    if (isEmptyValue(text)) return "";
     return text
       .replace(/^[-–—]?\s*/i, '') // Supprime les tirets initiaux
       .replace(/\bwhen\s+(we|i)\s+(buy|sell)\b[:,]?\s*/gi, '') // Supprime les phrases types

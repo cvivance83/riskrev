@@ -1291,3 +1291,120 @@ body.dark-mode .tooltip-container[data-tooltip]::after {
 body.dark-mode .copy-icon {
   color: #ccc;
 }
+
+/* 🔑 STYLES POUR LE MODAL DE CONFIGURATION API */
+.api-config-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+  animation: modalFadeIn 0.3s ease;
+}
+
+@keyframes modalFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.modal-content {
+  background: var(--bg-color);
+  border-radius: 12px;
+  padding: 24px;
+  max-width: 500px;
+  width: 90%;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+  border: 1px solid var(--border-color);
+  animation: modalSlideIn 0.3s ease;
+}
+
+@keyframes modalSlideIn {
+  from { transform: translateY(-20px) scale(0.9); }
+  to { transform: translateY(0) scale(1); }
+}
+
+.modal-content h3 {
+  margin: 0 0 16px 0;
+  color: var(--text-color);
+  text-align: center;
+}
+
+.modal-content label {
+  display: block;
+  margin-bottom: 12px;
+  color: var(--text-color);
+  font-weight: 500;
+}
+
+.modal-content select,
+.modal-content input {
+  width: 100%;
+  padding: 8px 12px;
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  background: var(--input-bg);
+  color: var(--text-color);
+  margin-top: 4px;
+  font-size: 14px;
+}
+
+.modal-content select:focus,
+.modal-content input:focus {
+  outline: none;
+  border-color: var(--accent-color);
+  box-shadow: 0 0 0 2px rgba(52, 152, 219, 0.2);
+}
+
+.modal-buttons {
+  display: flex;
+  gap: 8px;
+  margin-top: 20px;
+  justify-content: center;
+}
+
+.modal-buttons button {
+  padding: 8px 16px;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 500;
+  transition: all 0.2s ease;
+}
+
+.modal-buttons button:first-child {
+  background: linear-gradient(135deg, #27ae60, #229954);
+  color: white;
+}
+
+.modal-buttons button:nth-child(2) {
+  background: linear-gradient(135deg, #e74c3c, #c0392b);
+  color: white;
+}
+
+.modal-buttons button:last-child {
+  background: linear-gradient(135deg, #3498db, #2980b9);
+  color: white;
+}
+
+.modal-buttons button:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+/* Dark mode pour le modal */
+.dark-mode .modal-content {
+  background: #2c3e50;
+  border-color: #34495e;
+}
+
+.dark-mode .modal-content select,
+.dark-mode .modal-content input {
+  background: #34495e;
+  border-color: #4a6278;
+  color: #ecf0f1;
+}

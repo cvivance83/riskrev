@@ -606,53 +606,10 @@ setupDropdownToggle(clauseTypeLabel, clauseTypeContainer);
         const cellA = createCell(riskA, "seller", severityA);
         const cellB = createCell(riskB, "buyer", severityB);
 
-        // 🎯 Zone centrale avec clause et boutons copy
         const cellClause = document.createElement("div");
         cellClause.className = "cell clause clickable";
-        
-        const clauseContent = document.createElement("div");
-        clauseContent.className = "clause-main-content";
-        clauseContent.innerHTML = `<strong>${clause}</strong>`;
-        cellClause.appendChild(clauseContent);
-        
-        // 📝 Zone des boutons copy à droite
-        const copyActionsZone = document.createElement("div");
-        copyActionsZone.className = "copy-actions-zone";
-        
-        // Bouton copy pour Seller (cellA)
-        if (cellA.copyData) {
-          const copyBtnA = document.createElement("button");
-          copyBtnA.className = "copy-btn seller-copy";
-          copyBtnA.type = "button";
-          copyBtnA.title = "Copier amendment Seller";
-          copyBtnA.innerHTML = `<i data-lucide="copy"></i><span>S</span>`;
-          copyBtnA.addEventListener("click", (e) => {
-            e.stopPropagation();
-            copyToClipboard(cellA.copyData.fullText, copyBtnA);
-          });
-          copyActionsZone.appendChild(copyBtnA);
-        }
-        
-        // Bouton copy pour Buyer (cellB)
-        if (cellB.copyData) {
-          const copyBtnB = document.createElement("button");
-          copyBtnB.className = "copy-btn buyer-copy";
-          copyBtnB.type = "button";
-          copyBtnB.title = "Copier amendment Buyer";
-          copyBtnB.innerHTML = `<i data-lucide="copy"></i><span>B</span>`;
-          copyBtnB.addEventListener("click", (e) => {
-            e.stopPropagation();
-            copyToClipboard(cellB.copyData.fullText, copyBtnB);
-          });
-          copyActionsZone.appendChild(copyBtnB);
-        }
-        
-        cellClause.appendChild(copyActionsZone);
-        
-        cellClause.addEventListener("click", (e) => {
-          // Éviter le conflit avec les boutons copy
-          if (e.target.closest('.copy-btn')) return;
-          
+        cellClause.innerHTML = `<strong>${clause}</strong>`;
+        cellClause.addEventListener("click", () => {
           if (selectedClauseTypes.has(clause)) {
             selectedClauseTypes.delete(clause);
           } else {
@@ -696,52 +653,22 @@ setupDropdownToggle(clauseTypeLabel, clauseTypeContainer);
     const isValidDisplayText = displayText && !isEmptyValue(displayText);
     const cleanedAmendment = isValidAmendment ? cleanAmendmentText(amendment) : "";
 
-    // 🤖 Analyse AI de la clause
-    const aiAnalysis = analyzeClauseWithAI(displayText, risk["Clause Type"]);
-    
     if (isValidDisplayText) {
-      const contentContainer = document.createElement("div");
-      contentContainer.className = "clause-content";
-      
-      // Résumé intelligent en premier
-      if (aiAnalysis && aiAnalysis.summary) {
-        const summaryEl = document.createElement("div");
-        summaryEl.className = "ai-summary";
-        summaryEl.textContent = aiAnalysis.summary;
-        contentContainer.appendChild(summaryEl);
-      }
-      
       const anchor = document.createElement("span");
       anchor.className = "tooltip-anchor";
       anchor.textContent = displayText;
 
-      // Keywords tags
-      if (aiAnalysis && aiAnalysis.keywords.length > 0) {
-        const keywordsEl = document.createElement("div");
-        keywordsEl.className = "keyword-tags";
-        aiAnalysis.keywords.forEach(keyword => {
-          const tag = document.createElement("span");
-          tag.className = "keyword-tag";
-          tag.textContent = keyword;
-          keywordsEl.appendChild(tag);
-        });
-        contentContainer.appendChild(keywordsEl);
-      }
-
-      if (isValidRiskDescription || cleanedAmendment || aiAnalysis) {
+      if (isValidRiskDescription || cleanedAmendment) {
         const tooltip = document.createElement("div");
         tooltip.className = "tooltip-box";
         tooltip.innerHTML = `
-          ${aiAnalysis ? `<div class="ai-analysis"><strong>🤖 Analyse:</strong> ${aiAnalysis.summary}</div>` : ""}
           ${isValidRiskDescription ? `<div class="tooltip-risk">${riskDescription}</div>` : ""}
-          ${cleanedAmendment ? `<div class="tooltip-amendment"><strong>Condition Spéciale:</strong> ${cleanedAmendment}</div>` : ""}
-          ${aiAnalysis && aiAnalysis.detectedRisk ? `<div class="detected-risk"><strong>Risque détecté:</strong> ${getSeverityDisplayLabel(aiAnalysis.detectedRisk)}</div>` : ""}
+          ${cleanedAmendment ? `<div class="tooltip-amendment"><strong>Special Condition:</strong> ${cleanedAmendment}</div>` : ""}
         `;
         anchor.appendChild(tooltip);
       }
 
-      contentContainer.appendChild(anchor);
-      cell.appendChild(contentContainer);
+      cell.appendChild(anchor);
     } else if (cleanedAmendment || isValidRiskDescription) {
       // Si pas de contenu principal mais amendment/description existe
       const placeholder = document.createElement("span");
@@ -758,11 +685,18 @@ setupDropdownToggle(clauseTypeLabel, clauseTypeContainer);
       cell.appendChild(placeholder);
     }
 
-    // 📝 Retourner les données du bouton copy pour l'affichage dans la zone droite
-    cell.copyData = cleanedAmendment ? {
-      amendment: cleanedAmendment,
-      fullText: displayText || riskDescription || cleanedAmendment
-    } : null;
+    if (cleanedAmendment) {
+      const copyBtn = document.createElement("button");
+      copyBtn.className = "copy-icon";
+      copyBtn.type = "button";
+      copyBtn.title = "Copy amendment";
+      copyBtn.innerHTML = `<i data-lucide="copy"></i>`;
+      copyBtn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        copyToClipboard(cleanedAmendment, copyBtn);
+      });
+      cell.appendChild(copyBtn);
+    }
 
     if (severity) {
       const indicator = document.createElement("div");
@@ -791,7 +725,7 @@ setupDropdownToggle(clauseTypeLabel, clauseTypeContainer);
       
       if (!cleanedAmendment) return;
 
-      const formattedAmendment = `- ${clauseType}: ${cleanedAmendment}`;
+      const formattedAmendment = `- ${cleanedAmendment}`;
 
       if (row["Buy/Sell"] === "Sell") {
         if (!sellerByDepartment[department]) sellerByDepartment[department] = [];
@@ -993,6 +927,16 @@ function getSeverityColor(severity) {
   return colors[severity] || "#95a5a6";
 }
 
+function getRiskRecommendation(riskLevel) {
+  const recommendations = {
+    "1": "⚠️ Attention immédiate requise. Consultez l'équipe juridique avant signature.",
+    "2": "📋 Révision recommandée. Vérifiez les implications opérationnelles.",
+    "3": "✅ Risque acceptable. Procédures standard suffisantes.",
+    "4": "ℹ️ Information uniquement. Aucune action particulière requise."
+  };
+  return recommendations[riskLevel] || "Évaluation manuelle recommandée.";
+}
+
 // 🤖 CHATBOT FUNCTIONALITY
 function initializeChatbot() {
   console.log('🤖 Initialisation du chatbot...');
@@ -1092,16 +1036,36 @@ function initializeChatbot() {
   console.log('✅ Event listeners ajoutés avec succès');
 
   // Handle user messages
-  function handleUserMessage(message) {
+  async function handleUserMessage(message) {
     console.log('📤 Message utilisateur:', message);
     addMessage(message, 'user');
     
-    // Simulate thinking delay
-    setTimeout(() => {
-      const response = generateBotResponse(message);
-      console.log('🤖 Réponse bot:', response);
-      addMessage(response, 'bot');
-    }, 500);
+    // Vérifier si on a une API configurée pour une vraie conversation
+    const config = JSON.parse(sessionStorage.getItem('ai_config') || '{}');
+    
+    if (config.apiKey && message.toLowerCase().includes('ai:')) {
+      // Mode conversation AI réelle
+      const aiMessage = message.replace(/ai:/i, '').trim();
+      try {
+        addMessage('🤖 Consultation de l\'IA en cours...', 'bot');
+        const aiResponse = await callAIAPI(aiMessage);
+        // Remplacer le message de chargement
+        const messages = document.querySelectorAll('.bot-message');
+        const lastMessage = messages[messages.length - 1];
+        if (lastMessage) {
+          lastMessage.querySelector('.message-content').innerHTML = `<p><strong>🤖 Réponse IA :</strong></p><p>${aiResponse}</p>`;
+        }
+      } catch (error) {
+        addMessage(`❌ Erreur API : ${error.message}. Essayez "config" pour configurer l'API.`, 'bot');
+      }
+    } else {
+      // Mode réponses locales classiques
+      setTimeout(() => {
+        const response = generateBotResponse(message);
+        console.log('🤖 Réponse bot:', response);
+        addMessage(response, 'bot');
+      }, 500);
+    }
   }
 
   // Add message to chat
@@ -1137,9 +1101,17 @@ function initializeChatbot() {
     try {
       const lowerMessage = message.toLowerCase();
       
+      // Configuration API
+      if (lowerMessage.includes('config') || lowerMessage.includes('api') || lowerMessage.includes('clé')) {
+        setupAPIKey();
+        return '<p>🔑 Configuration de l\'API ouverte ! Pour utiliser l\'IA avancée, tapez "ai: votre question" après avoir configuré votre clé.</p>';
+      }
+
       // Test simple first
       if (lowerMessage.includes('test') || lowerMessage.includes('hello') || lowerMessage.includes('salut')) {
-        return '<p>🤖 Chatbot opérationnel ! Comment puis-je vous aider avec l\'analyse des risques ?</p>';
+        const config = JSON.parse(sessionStorage.getItem('ai_config') || '{}');
+        const apiStatus = config.apiKey ? '✅ API configurée' : '❌ API non configurée (tapez "config")';
+        return `<p>🤖 Chatbot opérationnel ! ${apiStatus}</p><p>Pour une IA avancée, tapez "ai: votre question"</p>`;
       }
       
       // Risk severity explanations
@@ -1184,6 +1156,23 @@ function initializeChatbot() {
         return '<p><strong>🎯 Comment Utiliser cet Outil</strong></p><p>1. Sélectionnez vos GTCs<br>2. Choisissez les Incoterms<br>3. Filtrez par niveau de risque<br>4. Examinez les clauses<br>5. Copiez les amendements</p>';
       }
 
+      // 🤖 Analyse intelligente des clauses
+      if (lowerMessage.includes('analyse') || lowerMessage.includes('analyser')) {
+        return '<p><strong>🤖 Analyse de Clause</strong></p><p>Copiez le texte d\'une clause dans le chat et je pourrai vous fournir:</p><ul><li>Un résumé intelligent</li><li>Une évaluation du niveau de risque</li><li>Des mots-clés thématiques</li><li>Des recommandations</li></ul>';
+      }
+
+      // Si le message semble être une clause à analyser (texte long)
+      if (message.length > 50 && !lowerMessage.includes('comment') && !lowerMessage.includes('aide')) {
+        const analysis = analyzeClauseWithAI(message, 'Manuel');
+        if (analysis) {
+          return `<p><strong>🤖 Analyse de votre clause:</strong></p>
+          <p><strong>Résumé:</strong> ${analysis.summary}</p>
+          <p><strong>Niveau de risque détecté:</strong> ${getSeverityDisplayLabel(analysis.detectedRisk)}</p>
+          <p><strong>Mots-clés:</strong> ${analysis.keywords.join(', ')}</p>
+          <p><strong>Recommandation:</strong> ${getRiskRecommendation(analysis.detectedRisk)}</p>`;
+        }
+      }
+
       // Default response for unrecognized queries
       return `<p>Je comprends que vous demandez: "<em>${message}</em>"</p>
       <p>Je peux vous aider avec:</p>
@@ -1194,6 +1183,7 @@ function initializeChatbot() {
         <li>🔄 Stratégies de contrats dos-à-dos</li>
         <li>📝 Guide des amendements et conditions spéciales</li>
         <li>🎯 Comment utiliser cet outil d'analyse des risques</li>
+        <li>🤖 Analyse intelligente de clauses (copiez le texte d\'une clause)</li>
       </ul>
       <p>Essayez de poser une question sur ces sujets, ou utilisez les boutons d'action rapide!</p>`;
     } catch (error) {
@@ -1201,4 +1191,143 @@ function initializeChatbot() {
       return `<p>Désolé, une erreur s'est produite. Essayez de reformuler votre question.</p>`;
     }
   }
+
+  // 🌐 Configuration API pour ChatGPT/Copilot
+  const AI_CONFIG = {
+    provider: 'openai', // 'openai' ou 'azure' pour Copilot
+    apiKey: '', // À configurer par l'utilisateur
+    endpoint: 'https://api.openai.com/v1/chat/completions',
+    model: 'gpt-3.5-turbo'
+  };
+
+  // 🔑 Fonction pour configurer l'API Key
+  function setupAPIKey() {
+    const modal = document.createElement('div');
+    modal.className = 'api-config-modal';
+    modal.innerHTML = `
+      <div class="modal-content">
+        <h3>🔑 Configuration API IA</h3>
+        <p>Pour activer les discussions avec l'IA, configurez votre clé API :</p>
+        
+        <label>
+          <strong>Fournisseur :</strong>
+          <select id="aiProvider">
+            <option value="openai">OpenAI ChatGPT</option>
+            <option value="azure">Microsoft Copilot (Azure)</option>
+          </select>
+        </label>
+        
+        <label>
+          <strong>Clé API :</strong>
+          <input type="password" id="apiKeyInput" placeholder="sk-..." />
+        </label>
+        
+        <label>
+          <strong>Endpoint (optionnel) :</strong>
+          <input type="text" id="endpointInput" placeholder="https://api.openai.com/v1/chat/completions" />
+        </label>
+        
+        <div class="modal-buttons">
+          <button onclick="saveAPIConfig()">💾 Sauvegarder</button>
+          <button onclick="closeAPIModal()">❌ Annuler</button>
+          <button onclick="testAPIConnection()">🧪 Tester</button>
+        </div>
+      </div>
+    `;
+    
+    document.body.appendChild(modal);
+  }
+
+  // 💾 Sauvegarder la configuration API
+  function saveAPIConfig() {
+    const provider = document.getElementById('aiProvider').value;
+    const apiKey = document.getElementById('apiKeyInput').value;
+    const endpoint = document.getElementById('endpointInput').value;
+    
+    if (apiKey) {
+      AI_CONFIG.provider = provider;
+      AI_CONFIG.apiKey = apiKey;
+      if (endpoint) AI_CONFIG.endpoint = endpoint;
+      
+      // Sauvegarde locale sécurisée (session seulement)
+      sessionStorage.setItem('ai_config', JSON.stringify(AI_CONFIG));
+      
+      alert('✅ Configuration sauvegardée pour cette session !');
+      closeAPIModal();
+    } else {
+      alert('❌ Veuillez saisir une clé API valide.');
+    }
+  }
+
+  // 🧪 Tester la connexion API
+  async function testAPIConnection() {
+    const apiKey = document.getElementById('apiKeyInput').value;
+    if (!apiKey) {
+      alert('❌ Veuillez saisir une clé API d\'abord.');
+      return;
+    }
+    
+    try {
+      const response = await callAIAPI('Hello, test de connexion.', apiKey);
+      if (response) {
+        alert('✅ Connexion API réussie !');
+      } else {
+        alert('❌ Échec de la connexion. Vérifiez votre clé API.');
+      }
+    } catch (error) {
+      alert(`❌ Erreur de connexion: ${error.message}`);
+    }
+  }
+
+  // 🤖 Appel à l'API IA
+  async function callAIAPI(message, apiKey = null) {
+    const config = JSON.parse(sessionStorage.getItem('ai_config') || '{}');
+    const keyToUse = apiKey || config.apiKey || AI_CONFIG.apiKey;
+    
+    if (!keyToUse) {
+      throw new Error('Clé API non configurée');
+    }
+    
+    const requestBody = {
+      model: config.model || AI_CONFIG.model,
+      messages: [
+        {
+          role: "system",
+          content: "Tu es un assistant expert en analyse de risques contractuels et GTCs. Tu aides les utilisateurs à comprendre et analyser les clauses contractuelles."
+        },
+        {
+          role: "user",
+          content: message
+        }
+      ],
+      max_tokens: 500,
+      temperature: 0.7
+    };
+    
+    const response = await fetch(config.endpoint || AI_CONFIG.endpoint, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${keyToUse}`
+      },
+      body: JSON.stringify(requestBody)
+    });
+    
+    if (!response.ok) {
+      throw new Error(`API Error: ${response.status}`);
+    }
+    
+    const data = await response.json();
+    return data.choices[0]?.message?.content || 'Pas de réponse de l\'IA.';
+  }
+
+  function closeAPIModal() {
+    const modal = document.querySelector('.api-config-modal');
+    if (modal) modal.remove();
+  }
+
+  // Rendre les fonctions globales
+  window.saveAPIConfig = saveAPIConfig;
+  window.closeAPIModal = closeAPIModal;
+  window.testAPIConnection = testAPIConnection;
 }

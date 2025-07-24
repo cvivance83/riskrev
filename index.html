@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <title>GTCs Compararison</title>
+  <link rel="stylesheet" href="/dpts/contracts/SiteAssets/GTCS_Dev/style.css">
+</head>
+<script src="/dpts/contracts/SiteAssets/GTCS_Dev/lucide.min.js"></script>
+
+<body>
+  <header class="gtc-header">
+      <div class="gtc-titles">
+        <h1 class="app-name">GTC Insights</h1>
+        <p class="app-subtitle">Visualize and compare contractual risks across global GTCs</p>
+        <p class="disclaimer">This risk review outlines key risk considerations identified as particularly relevant to participants operating under the applicable General Terms and Conditions (GTCs). It is intended to support risk awareness and operational planning within the trading and operations departments.
+The risk review has been deliberately structured to highlight a limited set of key risks and provisions. This selective approach is intended to maintain clarity and brevity, while still addressing those issues deemed most pertinent to the current trading context.
+Accordingly, this review does not constitute a comprehensive or exhaustive assessment of all potential risks arising under the GTCs. The omission of any specific risk or contractual provision should not be interpreted as an indication that it is immaterial.</p>
+      </div>
+    </div>
+    <div class="gtc-header-right">
+      <button id="themeSwitcher" aria-label="Toggle dark mode">🌓</button>
+    </div>
+  </header>
+  <div class="sticky-spacer"></div>
+
+
+<!-- WRAPPER COMPARAISON -->
+<div class="comparison-wrapper">
+  <!-- ZONE DE FILTRES -->
+  <div class="filters-wrapper">
+<div class="comparison-fixed-header" id="filterHeader">
+
+  <!-- COLONNE BUYER -->
+  <div class="column buyer">
+    <h2>I'm Buying under...</h2>
+
+    <label><strong>GTC Buyer:</strong>
+      <select id="gtcBSelect"></select>
+    </label>
+
+    <label><strong>Incoterm Buyer:</strong>
+      <select id="incotermBuyerSelect" multiple></select>
+    </label>
+
+    <div class="severity-filter">
+      <span><strong>Risk Buyer:</strong></span>
+      <button type="button" id="highBuyer" class="severity-pill severity-high" onclick="toggleSeverity('1', 'buyer', event)">1</button>
+      <button type="button" id="moderateBuyer" class="severity-pill severity-moderate" onclick="toggleSeverity('2', 'buyer', event)">2</button>
+      <button type="button" id="lowBuyer" class="severity-pill severity-low" onclick="toggleSeverity('3', 'buyer', event)">3</button>
+      <button type="button" id="informativeBuyer" class="severity-pill severity-informative" onclick="toggleSeverity('0', 'buyer', event)">0</button>
+    </div>
+
+    <div class="amendment-summary buyer">
+      <h3>Amendments Buyer</h3>
+      <div class="amendment-box">
+        <pre id="amendmentSummaryBuyTop" class="amendment-preview" style="max-height: 4.5em; overflow: hidden;"></pre>
+        <div class="amendment-buttons">
+          <button type="button" class="modern-btn toggle-btn" onclick="toggleSummary(this)">
+            <i data-lucide="chevron-down"></i>
+          </button>
+          <button class="modern-btn copy-btn" type="button" onclick="copyAllAmendments('buyer')">
+            <i data-lucide="clipboard-copy"></i> Copy
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- COLONNE CLAUSE -->
+  <div class="column clause">
+    <h2>Select a clause</h2>
+
+    <div class="multiselect-wrapper">
+      <label><strong>Department:</strong></label>
+      <div class="multiselect-label" id="categoryLabel">Select Category</div>
+      <div class="multiselect-dropdown" id="categoryDropdown"></div>
+    </div>
+
+    <div class="b2b-filter">
+      <label>
+        <input type="checkbox" id="backToBackCheckbox" />
+        Back to Back (same GTC + Incoterm)
+      </label>
+    </div>
+
+    <div class="multiselect-wrapper">
+      <label><strong>Clause Type:</strong></label>
+      <button type="button" id="clearClauseType" class="clear-btn" title="Clear Clause Types" aria-label="Clear">
+        <i data-lucide="eraser"></i>
+      </button>
+      <div class="multiselect-label" id="clauseTypeLabel">Select Clause Type</div>
+      <div class="multiselect-dropdown" id="clauseTypeDropdown"></div>
+    </div>
+  </div>
+
+  <!-- COLONNE SELLER -->
+  <div class="column seller">
+    <h2>I'm Selling under...</h2>
+
+    <label><strong>GTC Seller:</strong>
+      <select id="gtcASelect"></select>
+    </label>
+
+    <label><strong>Incoterm Seller:</strong>
+      <select id="incotermSellerSelect" multiple></select>
+    </label>
+
+    <div class="severity-filter">
+      <span><strong>Risk Seller:</strong></span>
+      <button type="button" id="highSeller" class="severity-pill severity-high" onclick="toggleSeverity('1', 'seller', event)">1</button>
+      <button type="button" id="moderateSeller" class="severity-pill severity-moderate" onclick="toggleSeverity('2', 'seller', event)">2</button>
+      <button type="button" id="lowSeller" class="severity-pill severity-low" onclick="toggleSeverity('3', 'seller', event)">3</button>
+      <button type="button" id="informativeSeller" class="severity-pill severity-informative" onclick="toggleSeverity('0', 'seller', event)">0</button>
+    </div>
+
+    <div class="amendment-summary seller">
+      <h3>Amendments Seller</h3>
+      <div class="amendment-box">
+        <pre id="amendmentSummarySellTop" class="amendment-preview" style="max-height: 4.5em; overflow: hidden;"></pre>
+        <div class="amendment-buttons">
+          <button type="button" class="modern-btn toggle-btn" onclick="toggleSummary(this)">
+            <i data-lucide="chevron-down"></i>
+          </button>
+          <button class="modern-btn copy-btn" type="button" onclick="copyAllAmendments('seller')">
+            <i data-lucide="clipboard-copy"></i> Copy
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div> <!-- 🟩 FIN de .comparison-fixed-header -->
+
+
+    <!-- BOUTON TOGGLE -->
+    <button type="button" id="toggleFilters" class="filters-toggle" aria-label="Toggle Filters">
+      <span id="toggleArrow">↓</span>
+    </button>
+
+    <hr class="comparison-separator">
+
+    <!-- CONTENU DES CLAUSES -->
+    <div class="comparison-body">
+      <!-- Ici viendront les .row avec .cell -->
+    </div>
+
+  </div> <!-- FIN .filters-wrapper -->
+
+</div> <!-- FIN .comparison-wrapper -->
+
+        <script src="/dpts/contracts/SiteAssets/GTCS_Dev/script.js"></script>
+</body>
+
+</html>

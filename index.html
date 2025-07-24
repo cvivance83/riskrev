@@ -149,6 +149,55 @@ Accordingly, this review does not constitute a comprehensive or exhaustive asses
 
 </div> <!-- FIN .comparison-wrapper -->
 
+<!-- 🤖 CHATBOT CONTAINER -->
+<div id="chatbot-container" class="chatbot-container">
+  <div class="chatbot-header">
+    <div class="chatbot-title">
+      <i data-lucide="message-circle"></i>
+      <span>Risk Analysis Assistant</span>
+    </div>
+    <button id="chatbot-toggle" class="chatbot-toggle-btn" aria-label="Toggle Chatbot">
+      <i data-lucide="minimize-2"></i>
+    </button>
+  </div>
+  
+  <div class="chatbot-messages" id="chatbot-messages">
+    <div class="message bot-message">
+      <div class="message-avatar">🤖</div>
+      <div class="message-content">
+        <p>Hello! I'm your Risk Analysis Assistant. I can help you:</p>
+        <ul>
+          <li>Understand risk severity levels</li>
+          <li>Explain GTC clause implications</li>
+          <li>Provide guidance on risk mitigation</li>
+          <li>Answer questions about contract terms</li>
+        </ul>
+        <p>What would you like to know?</p>
+      </div>
+    </div>
+  </div>
+  
+  <div class="chatbot-input-area">
+    <div class="quick-actions">
+      <button class="quick-action-btn" data-query="Explain high risk clauses">🔴 High Risk</button>
+      <button class="quick-action-btn" data-query="What are moderate risks?">🟡 Moderate Risk</button>
+      <button class="quick-action-btn" data-query="Back to back meaning">🔄 Back to Back</button>
+    </div>
+    <div class="input-container">
+      <input type="text" id="chatbot-input" placeholder="Ask about risks, GTCs, or clauses..." maxlength="500">
+      <button id="chatbot-send" class="send-btn" aria-label="Send Message">
+        <i data-lucide="send"></i>
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- 🤖 CHATBOT TRIGGER BUTTON -->
+<button id="chatbot-fab" class="chatbot-fab" aria-label="Open Risk Assistant">
+  <i data-lucide="message-circle"></i>
+  <span class="chatbot-notification">💡</span>
+</button>
+
         <script src="/dpts/contracts/SiteAssets/GTCS_Dev/script.js"></script>
 </body>
 

@@ -213,6 +213,30 @@ console.log("⛔ Clauses filtrées car Back to Back = Yes :", data.filter(d => !
     }
     return false;
   }
+
+  // 🚢 Vérifie si les Incoterms sélectionnés correspondent au contenu des clauses
+  function matchIncotermInContent(dataRow, selectedIncotermValues) {
+    if (!selectedIncotermValues.length) return true;
+    
+    // Chercher dans le contenu de la clause et l'amendement
+    const contentToCheck = [
+      dataRow["Content of the clause"] || "",
+      dataRow["Abbreviated Amendment"] || "",
+      dataRow["Risk Description"] || ""
+    ].join(" ");
+    
+    const detectedIncoterms = detectIncoterms(contentToCheck);
+    
+    // Si aucun Incoterm détecté dans le contenu, utiliser le filtrage standard
+    if (detectedIncoterms.length === 0) {
+      return true; // Laisser passer, sera filtré par matchIncoterm
+    }
+    
+    // Vérifier si au moins un des Incoterms sélectionnés correspond aux détectés
+    return selectedIncotermValues.some(selected => 
+      detectedIncoterms.includes(selected.toUpperCase())
+    );
+  }
   function copyToClipboard(text, button) {
     try {
       // Tentative moderne avec navigator.clipboard
@@ -492,7 +516,7 @@ setupDropdownToggle(clauseTypeLabel, clauseTypeContainer);
       normalize(d.GTCs) === gtcA &&
       d["Buy/Sell"].trim().toUpperCase() === "SELL" &&
       (!filterBackToBack || isNotBackToBack(d)) &&
-      matchIncoterm(d.Incoterm, incotermSellerValues) &&
+      (matchIncoterm(d.Incoterm, incotermSellerValues) || matchIncotermInContent(d, incotermSellerValues)) &&
       (selectedClauseTypes.size === 0 || selectedClauseTypes.has(d["Clause Type"])) &&
       (selectedCategories.size === 0 || selectedCategories.has(d["Clause Category"])) &&
       (selectedSeveritySeller.size === 0 || selectedSeveritySeller.has(normalizeSeverityNum(d["Severity Seller"])))
@@ -502,7 +526,7 @@ setupDropdownToggle(clauseTypeLabel, clauseTypeContainer);
       normalize(d.GTCs) === gtcB &&
       d["Buy/Sell"].trim().toUpperCase() === "BUY" &&
       (!filterBackToBack || isNotBackToBack(d)) &&
-      matchIncoterm(d.Incoterm, incotermBuyerValues) &&
+      (matchIncoterm(d.Incoterm, incotermBuyerValues) || matchIncotermInContent(d, incotermBuyerValues)) &&
       (selectedClauseTypes.size === 0 || selectedClauseTypes.has(d["Clause Type"])) &&
       (selectedCategories.size === 0 || selectedCategories.has(d["Clause Category"])) &&
       (selectedSeverityBuyer.size === 0 || selectedSeverityBuyer.has(normalizeSeverityNum(d["Severity Buyer"])))
@@ -654,6 +678,26 @@ setupDropdownToggle(clauseTypeLabel, clauseTypeContainer);
     const cleanedAmendment = isValidAmendment ? cleanAmendmentText(amendment) : "";
 
     if (isValidDisplayText) {
+      const container = document.createElement("div");
+      container.className = "content-container";
+      
+      // 🚢 Détecter les Incoterms dans le contenu
+      const allContent = [displayText, cleanedAmendment, riskDescription].join(" ");
+      const detectedIncoterms = detectIncoterms(allContent);
+      
+      // Afficher les Incoterms détectés
+      if (detectedIncoterms.length > 0) {
+        const incotermTags = document.createElement("div");
+        incotermTags.className = "incoterm-tags";
+        detectedIncoterms.forEach(incoterm => {
+          const tag = document.createElement("span");
+          tag.className = "incoterm-tag";
+          tag.textContent = incoterm;
+          incotermTags.appendChild(tag);
+        });
+        container.appendChild(incotermTags);
+      }
+      
       const anchor = document.createElement("span");
       anchor.className = "tooltip-anchor";
       anchor.textContent = displayText;
@@ -662,13 +706,15 @@ setupDropdownToggle(clauseTypeLabel, clauseTypeContainer);
         const tooltip = document.createElement("div");
         tooltip.className = "tooltip-box";
         tooltip.innerHTML = `
+          ${detectedIncoterms.length > 0 ? `<div class="tooltip-incoterms"><strong>🚢 Incoterms:</strong> ${detectedIncoterms.join(', ')}</div>` : ""}
           ${isValidRiskDescription ? `<div class="tooltip-risk">${riskDescription}</div>` : ""}
           ${cleanedAmendment ? `<div class="tooltip-amendment"><strong>Special Condition:</strong> ${cleanedAmendment}</div>` : ""}
         `;
         anchor.appendChild(tooltip);
       }
 
-      cell.appendChild(anchor);
+      container.appendChild(anchor);
+      cell.appendChild(container);
     } else if (cleanedAmendment || isValidRiskDescription) {
       // Si pas de contenu principal mais amendment/description existe
       const placeholder = document.createElement("span");
@@ -771,6 +817,50 @@ setupDropdownToggle(clauseTypeLabel, clauseTypeContainer);
     const cleanValue = value.toString().toLowerCase().trim();
     const emptyValues = ['nan', 'n/a', 'na', '-', '/', '', 'null', 'undefined', 'none'];
     return emptyValues.includes(cleanValue);
+  }
+
+  // 🚢 Fonction pour détecter les Incoterms dans le texte
+  function detectIncoterms(text) {
+    if (!text || isEmptyValue(text)) return [];
+    
+    const incoterms = ['CIF', 'CFR', 'DAP', 'FOB'];
+    const detectedIncoterms = [];
+    
+    // Pattern pour détecter les Incoterms avec différents formats
+    // Ex: "CIF:", "CIF/CFR:", "(CIF):", "DAP :", etc.
+    const pattern = /\b(CIF|CFR|DAP|FOB)(?:\/([CIF|CFR|DAP|FOB]+))*\s*[\(\)]?\s*:/gi;
+    
+    let match;
+    while ((match = pattern.exec(text)) !== null) {
+      const mainTerm = match[1].toUpperCase();
+      if (incoterms.includes(mainTerm) && !detectedIncoterms.includes(mainTerm)) {
+        detectedIncoterms.push(mainTerm);
+      }
+      
+      // Si il y a des termes séparés par /
+      if (match[2]) {
+        const additionalTerms = match[2].split('/');
+        additionalTerms.forEach(term => {
+          const cleanTerm = term.trim().toUpperCase();
+          if (incoterms.includes(cleanTerm) && !detectedIncoterms.includes(cleanTerm)) {
+            detectedIncoterms.push(cleanTerm);
+          }
+        });
+      }
+    }
+    
+    return detectedIncoterms;
+  }
+
+  // 📝 Extraire le texte spécifique à un Incoterm
+  function extractIncotermText(text, incoterm) {
+    if (!text || isEmptyValue(text)) return '';
+    
+    // Pattern pour capturer le texte après un Incoterm spécifique
+    const pattern = new RegExp(`\\b${incoterm}(?:\\/[A-Z]+)*\\s*[\\(\\)]?\\s*:([^\\n]*(?:\\n(?!\\b(?:CIF|CFR|DAP|FOB))[^\\n]*)*)`);
+    const match = text.match(pattern);
+    
+    return match ? match[1].trim() : '';
   }
 
   // 🤖 Intelligence AI pour l'analyse des clauses
@@ -892,18 +982,52 @@ function toggleSummary(button) {
 
 function copyAllAmendments(side) {
   const pre = document.getElementById(`amendmentSummary${side === 'seller' ? 'Sell' : 'Buy'}Top`);
-  const text = pre.textContent;
+  
+  // 📝 Formater le texte pour la copie avec headers et bullet points
+  let formattedText = `===== AMENDEMENTS ${side.toUpperCase()} =====\n\n`;
+  
+  // Récupérer les sections par département
+  const departments = pre.querySelectorAll('.department-section');
+  
+  departments.forEach(section => {
+    const header = section.querySelector('.department-header');
+    const items = section.querySelectorAll('.amendment-item');
+    
+    if (header && items.length > 0) {
+      // Header de département en gras
+      formattedText += `${header.textContent.toUpperCase()}\n`;
+      formattedText += '='.repeat(header.textContent.length) + '\n\n';
+      
+      // Items en bullet points
+      items.forEach(item => {
+        const text = item.textContent.trim();
+        if (text) {
+          formattedText += `• ${text}\n`;
+        }
+      });
+      
+      formattedText += '\n';
+    }
+  });
+  
+  // Si pas de sections trouvées, utiliser le texte brut
+  if (departments.length === 0) {
+    formattedText += pre.textContent || 'Aucun amendement disponible.';
+  }
 
-  const textArea = document.createElement("textarea");
-  textArea.value = text;
-  document.body.appendChild(textArea);
-  textArea.select();
-  document.execCommand("copy");
-  document.body.removeChild(textArea);
-
-  // navigator.clipboard.writeText(text).then(() => {
-  //   alert("Amendments copiés !");
-  // });
+  // Copier dans le presse-papiers
+  if (navigator.clipboard && window.isSecureContext) {
+    navigator.clipboard.writeText(formattedText).then(() => {
+      console.log('✅ Amendements copiés au format structuré');
+    });
+  } else {
+    const textArea = document.createElement("textarea");
+    textArea.value = formattedText;
+    document.body.appendChild(textArea);
+    textArea.select();
+    document.execCommand("copy");
+    document.body.removeChild(textArea);
+  }
 }
 
 // 🎯 NEW: Helper functions for enhanced sorting and display

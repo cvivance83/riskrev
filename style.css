@@ -682,6 +682,50 @@ h2 {
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.5);
 }
 
+/* 📝 STYLES UNIFIÉS POUR LES BOUTONS MODERN-BTN */
+.modern-btn {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  background: linear-gradient(135deg, var(--accent-color), #2980b9);
+  border: none;
+  border-radius: 6px;
+  padding: 4px 6px;
+  cursor: pointer;
+  color: white;
+  font-size: 10px;
+  font-weight: 600;
+  transition: all 0.2s ease;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+
+.modern-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+}
+
+.modern-btn svg {
+  width: 12px;
+  height: 12px;
+}
+
+.modern-btn.toggle-btn {
+  background: linear-gradient(135deg, #8e44ad, #7d3c98);
+}
+
+.modern-btn.copy-btn {
+  background: linear-gradient(135deg, #27ae60, #229954);
+}
+
+/* Dark mode pour modern-btn */
+.dark-mode .modern-btn {
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
+}
+
+.dark-mode .modern-btn:hover {
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.5);
+}
+
 /* 🏢 STYLES POUR LES AMENDEMENTS PAR DÉPARTEMENT */
 .department-section {
   margin-bottom: 12px;
@@ -704,10 +748,10 @@ h2 {
   background: var(--input-bg);
   border: 1px solid var(--border-color);
   border-radius: 4px;
-  padding: 6px 10px;
-  margin: 3px 0;
-  font-size: 12px;
-  line-height: 1.4;
+  padding: 8px 12px;
+  margin: 4px 0;
+  font-size: 14px;
+  line-height: 1.5;
   border-left: 3px solid var(--accent-color);
 }
 
@@ -952,11 +996,13 @@ select[multiple] {
   overflow: hidden;
   white-space: pre-wrap;
   transition: max-height 0.3s ease;
-  border: 1px solid #ccc;
-  padding: 8px;
-  background: #f9f9f9;
+  border: 1px solid var(--border-color);
+  padding: 12px;
+  background: var(--input-bg);
   border-radius: 8px;
-  font-size: 0.9em;
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--text-color);
 }
 
 .amendment-preview.expanded {
@@ -1057,6 +1103,9 @@ select[multiple] {
   align-items: flex-start;
   gap: 8px; /* espace entre pastille et texte */
   position: relative;
+  min-width: 350px;
+  width: 40%;
+  padding-right: 40px; /* Espace pour l'icône copy */
 }
 
 
@@ -1192,15 +1241,22 @@ select[multiple] {
 }
 
 .copy-icon {
-  background: none;
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: linear-gradient(135deg, var(--accent-color), #2980b9);
   border: none;
+  border-radius: 6px;
   cursor: pointer;
-  margin-left: auto;
-  padding: 0;
+  padding: 4px 6px;
   display: flex;
   align-items: center;
-  margin-left: auto; /* ⬅️ pousse le bouton à droite */
-  color: var(--text-color);
+  color: white;
+  font-size: 10px;
+  font-weight: 600;
+  transition: all 0.2s ease;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
 }
 
 .copy-icon i {
@@ -1209,9 +1265,9 @@ select[multiple] {
 }
 
 
-.copy-icon:hover i {
-  opacity: 0.9;
-  color: var(--text-color);
+.copy-icon:hover {
+  transform: translateY(-50%) translateY(-1px);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
 }
 
 .check-success {
@@ -1289,7 +1345,8 @@ body.dark-mode .tooltip-container[data-tooltip]::after {
 }
 
 body.dark-mode .copy-icon {
-  color: #ccc;
+  background: linear-gradient(135deg, #34495e, #2c3e50);
+  color: #ecf0f1;
 }
 
 /* 🔑 STYLES POUR LE MODAL DE CONFIGURATION API */
@@ -1407,4 +1464,49 @@ body.dark-mode .copy-icon {
   background: #34495e;
   border-color: #4a6278;
   color: #ecf0f1;
+}
+
+/* 🚢 STYLES POUR LES TAGS INCOTERMS */
+.content-container {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.incoterm-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-bottom: 4px;
+}
+
+.incoterm-tag {
+  background: linear-gradient(135deg, #e67e22, #d35400);
+  color: white;
+  padding: 2px 6px;
+  border-radius: 10px;
+  font-size: 9px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.tooltip-incoterms {
+  background: linear-gradient(135deg, #e67e22, #d35400);
+  color: white;
+  padding: 6px 8px;
+  margin: 4px 0;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 500;
+}
+
+/* Dark mode pour les Incoterms */
+.dark-mode .incoterm-tag {
+  background: linear-gradient(135deg, #d35400, #a04000);
+}
+
+.dark-mode .tooltip-incoterms {
+  background: linear-gradient(135deg, #d35400, #a04000);
 }

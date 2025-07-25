@@ -15,6 +15,25 @@ const toggle = document.getElementById("themeSwitcher");
 document.addEventListener("DOMContentLoaded", () => {
   const body = document.body;
 
+  // 🤖 TEST RAPIDE DU CHATBOT
+  setTimeout(() => {
+    console.log('🧪 Test des éléments du chatbot après 2 secondes...');
+    const fab = document.getElementById('chatbot-fab');
+    const container = document.getElementById('chatbot-container');
+    
+    if (fab && container) {
+      console.log('✅ Éléments trouvés, test de visibilité...');
+      // Test simple de fonctionnement
+      fab.onclick = function() {
+        console.log('🔵 Test FAB click - Manual');
+        container.classList.toggle('active');
+        console.log('📱 Container classes:', container.classList.toString());
+      };
+    } else {
+      console.error('❌ Éléments de test non trouvés:', { fab: !!fab, container: !!container });
+    }
+  }, 2000);
+
   // 🌙 Gestion du thème
   const toggle = document.getElementById("themeSwitcher");
   const currentTheme = localStorage.getItem("theme");
@@ -43,9 +62,6 @@ document.addEventListener("DOMContentLoaded", () => {
     toggleArrow.textContent = filtersVisible ? "↓" : "→";
   });
 
-  // 🤖 CHATBOT INITIALIZATION
-  initializeChatbot();
-
   fetch("http://portal.dts.corp.local/dpts/contracts/_layouts/15/download.aspx?UniqueId=%7Bb82c6aba%2Dafcc%2D4832%2Dbf94%2D14fc3a832140%7D&Source=http%3A%2F%2Fportal%2Edts%2Ecorp%2Elocal%2Fdpts%2Fcontracts%2FSiteAssets%2FForms%2FAllItems%2Easpx%3FRootFolder%3D%252Fdpts%252Fcontracts%252FSiteAssets%252FGTCS%255FDev%26FolderCTID%3D0x012000D5D1FADBC8861742BDC627451942500C%26View%3D%257B954C25BC%252D2637%252D4D50%252DA01D%252D338BA474858F%257D")
     .then(response => response.json())
     .then(json => {
@@ -56,6 +72,9 @@ document.addEventListener("DOMContentLoaded", () => {
 
       // ✅ Appelle Lucide une fois que le DOM a été mis à jour
       lucide.createIcons();
+      
+      // 🤖 CHATBOT INITIALIZATION - après que tout soit chargé
+      initializeChatbot();
     })
     .catch(err => console.error("Erreur de chargement du JSON :", err));
 
@@ -194,22 +213,112 @@ console.log("⛔ Clauses filtrées car Back to Back = Yes :", data.filter(d => !
     }
     return false;
   }
-  function copyToClipboard(text, button) {
 
+  // 🚢 Vérifie si les Incoterms sélectionnés correspondent au contenu des clauses
+  function matchIncotermInContent(dataRow, selectedIncotermValues) {
+    if (!selectedIncotermValues.length) return true;
+    
+    // Chercher dans le contenu de la clause et l'amendement
+    const contentToCheck = [
+      dataRow["Content of the clause"] || "",
+      dataRow["Abbreviated Amendment"] || "",
+      dataRow["Risk Description"] || ""
+    ].join(" ");
+    
+    const detectedIncoterms = detectIncoterms(contentToCheck);
+    
+    // Si aucun Incoterm détecté dans le contenu, utiliser le filtrage standard
+    if (detectedIncoterms.length === 0) {
+      return true; // Laisser passer, sera filtré par matchIncoterm
+    }
+    
+    // Vérifier si au moins un des Incoterms sélectionnés correspond aux détectés
+    return selectedIncotermValues.some(selected => 
+      detectedIncoterms.includes(selected.toUpperCase())
+    );
+  }
+
+  
+  // 📝 Filtre le texte pour ne garder que les parties liées aux Incoterms sélectionnés
+  function filterTextByIncoterms(text, selectedIncoterms) {
+    if (!text || !selectedIncoterms.length) return text;
+
+    const detectedIncoterms = detectIncoterms(text);
+
+    // Si aucun Incoterm détecté, retourner le texte original
+    if (detectedIncoterms.length === 0) return text;
+
+    let filteredText = text;
+
+    // Pour chaque Incoterm détecté
+    detectedIncoterms.forEach(incoterm => {
+      const incotermText = extractIncotermText(text, incoterm);
+
+      // Si cet Incoterm n'est pas sélectionné, supprimer sa partie
+      if (!selectedIncoterms.includes(incoterm.toUpperCase())) {
+        // Pattern pour supprimer la section entière de cet Incoterm
+        const removePattern = new RegExp(`\\b${incoterm}(?:\\/[A-Z]+)*\\s*[\\(\\)]?\\s*:[^\\n]*(?:\\n(?!\\b(?:CIF|CFR|DAP|FOB))[^\\n]*)*`, 'gi');
+        filteredText = filteredText.replace(removePattern, '').trim();
+      }
+    });
+
+    // Nettoyer les espaces et lignes vides en trop
+    return filteredText.replace(/\n\s*\n/g, '\n').trim();
+  }
+  function copyToClipboard(text, button) {
+    try {
+      // Tentative moderne avec navigator.clipboard
+      if (navigator.clipboard && window.isSecureContext) {
+        navigator.clipboard.writeText(text).then(() => {
+          showCopySuccess(button);
+        }).catch(() => {
+          fallbackCopy(text, button);
+        });
+      } else {
+        fallbackCopy(text, button);
+      }
+    } catch (error) {
+      fallbackCopy(text, button);
+    }
+  }
+
+  function fallbackCopy(text, button) {
     const textArea = document.createElement("textarea");
     textArea.value = text;
+    textArea.style.position = "fixed";
+    textArea.style.opacity = "0";
     document.body.appendChild(textArea);
     textArea.select();
     document.execCommand("copy");
     document.body.removeChild(textArea);
+    showCopySuccess(button);
+  }
 
-    button.innerHTML = '<i data-lucide="check" class="check-success"></i>';
+  function showCopySuccess(button) {
+    const originalHTML = button.innerHTML;
+    const originalClass = button.className;
+    
+
+    // Animation pour tous les types de boutons copy
+    button.classList.add('copy-success');
+
+    if (button.classList.contains('modern-btn')) {
+      // Pour les boutons modern-btn
+      button.innerHTML = '<i data-lucide="check"></i> Copié !';
+      button.style.background = 'linear-gradient(135deg, #27ae60, #229954)';
+    } else {
+      // Pour les autres boutons copy
+      button.innerHTML = '<i data-lucide="check"></i>';
+    }
+    
     lucide.createIcons();
 
     setTimeout(() => {
-      button.innerHTML = '<i data-lucide="clipboard-copy"></i>';
+      button.className = originalClass;
+      button.innerHTML = originalHTML;
+      button.style.background = ''; // Reset le style
       lucide.createIcons();
-    }, 3000);
+    }, 2000);
   }
 
 
@@ -446,7 +555,7 @@ setupDropdownToggle(clauseTypeLabel, clauseTypeContainer);
       normalize(d.GTCs) === gtcA &&
       d["Buy/Sell"].trim().toUpperCase() === "SELL" &&
       (!filterBackToBack || isNotBackToBack(d)) &&
-      matchIncoterm(d.Incoterm, incotermSellerValues) &&
+      (matchIncoterm(d.Incoterm, incotermSellerValues) || matchIncotermInContent(d, incotermSellerValues)) &&
       (selectedClauseTypes.size === 0 || selectedClauseTypes.has(d["Clause Type"])) &&
       (selectedCategories.size === 0 || selectedCategories.has(d["Clause Category"])) &&
       (selectedSeveritySeller.size === 0 || selectedSeveritySeller.has(normalizeSeverityNum(d["Severity Seller"])))
@@ -456,7 +565,7 @@ setupDropdownToggle(clauseTypeLabel, clauseTypeContainer);
       normalize(d.GTCs) === gtcB &&
       d["Buy/Sell"].trim().toUpperCase() === "BUY" &&
       (!filterBackToBack || isNotBackToBack(d)) &&
-      matchIncoterm(d.Incoterm, incotermBuyerValues) &&
+      (matchIncoterm(d.Incoterm, incotermBuyerValues) || matchIncotermInContent(d, incotermBuyerValues)) &&
       (selectedClauseTypes.size === 0 || selectedClauseTypes.has(d["Clause Type"])) &&
       (selectedCategories.size === 0 || selectedCategories.has(d["Clause Category"])) &&
       (selectedSeverityBuyer.size === 0 || selectedSeverityBuyer.has(normalizeSeverityNum(d["Severity Buyer"])))
@@ -600,13 +709,34 @@ setupDropdownToggle(clauseTypeLabel, clauseTypeContainer);
 
     const amendment = (risk["Abbreviated Amendment"] || "").trim();
     const riskDescription = (risk["Risk Description"] || "").trim();
-    const displayText = risk["Content of the clause"] || "-";
+    const displayText = risk["Content of the clause"] || "";
 
-    const isValidAmendment = amendment && amendment.toLowerCase() !== "nan" && amendment !== "/";
-    const isValidRiskDescription = riskDescription && riskDescription.toLowerCase() !== "nan";
+    const isValidAmendment = amendment && !isEmptyValue(amendment);
+    const isValidRiskDescription = riskDescription && !isEmptyValue(riskDescription);
+    const isValidDisplayText = displayText && !isEmptyValue(displayText);
     const cleanedAmendment = isValidAmendment ? cleanAmendmentText(amendment) : "";
 
-    if (displayText.toLowerCase() !== "nan") {
+    if (isValidDisplayText) {
+      const container = document.createElement("div");
+      container.className = "content-container";
+      
+      // 🚢 Détecter les Incoterms dans le contenu
+      const allContent = [displayText, cleanedAmendment, riskDescription].join(" ");
+      const detectedIncoterms = detectIncoterms(allContent);
+      
+      // Afficher les Incoterms détectés
+      if (detectedIncoterms.length > 0) {
+        const incotermTags = document.createElement("div");
+        incotermTags.className = "incoterm-tags";
+        detectedIncoterms.forEach(incoterm => {
+          const tag = document.createElement("span");
+          tag.className = "incoterm-tag";
+          tag.textContent = incoterm;
+          incotermTags.appendChild(tag);
+        });
+        container.appendChild(incotermTags);
+      }
+      
       const anchor = document.createElement("span");
       anchor.className = "tooltip-anchor";
       anchor.textContent = displayText;
@@ -615,13 +745,29 @@ setupDropdownToggle(clauseTypeLabel, clauseTypeContainer);
         const tooltip = document.createElement("div");
         tooltip.className = "tooltip-box";
         tooltip.innerHTML = `
+          ${detectedIncoterms.length > 0 ? `<div class="tooltip-incoterms"><strong>🚢 Incoterms:</strong> ${detectedIncoterms.join(', ')}</div>` : ""}
           ${isValidRiskDescription ? `<div class="tooltip-risk">${riskDescription}</div>` : ""}
           ${cleanedAmendment ? `<div class="tooltip-amendment"><strong>Special Condition:</strong> ${cleanedAmendment}</div>` : ""}
         `;
         anchor.appendChild(tooltip);
       }
 
-      cell.appendChild(anchor);
+      container.appendChild(anchor);
+      cell.appendChild(container);
+    } else if (cleanedAmendment || isValidRiskDescription) {
+      // Si pas de contenu principal mais amendment/description existe
+      const placeholder = document.createElement("span");
+      placeholder.className = "tooltip-anchor empty-content";
+      placeholder.textContent = "Voir détails";
+      
+      const tooltip = document.createElement("div");
+      tooltip.className = "tooltip-box";
+      tooltip.innerHTML = `
+        ${isValidRiskDescription ? `<div class="tooltip-risk">${riskDescription}</div>` : ""}
+        ${cleanedAmendment ? `<div class="tooltip-amendment"><strong>Condition Spéciale:</strong> ${cleanedAmendment}</div>` : ""}
+      `;
+      placeholder.appendChild(tooltip);
+      cell.appendChild(placeholder);
     }
 
     if (cleanedAmendment) {
@@ -650,31 +796,198 @@ setupDropdownToggle(clauseTypeLabel, clauseTypeContainer);
 
 
   function generateAmendmentSummary(dataRows) {
-  let sellerText = "", buyerText = "";
+    // 🏢 Groupement par département/catégorie
+    const sellerByDepartment = {};
+    const buyerByDepartment = {};
 
-  dataRows.forEach(row => {
-    let amendment = row["Abbreviated Amendment"]?.trim();
-    if (!amendment || amendment.toLowerCase() === "nan" || amendment === "/") return;
+    dataRows.forEach(row => {
+      let amendment = row["Abbreviated Amendment"]?.trim();
+      if (!amendment || isEmptyValue(amendment)) return;
 
-    const clauseTitle = row["Clause"] || row["Clause Type"] || "Untitled";
-    amendment = cleanAmendmentText(amendment);
-    const formatted = `<strong>${clauseTitle}</strong>: ${amendment}<br><br>`;
+      const department = row["Clause Category"] || "Autres";
+      const clauseType = row["Clause Type"] || "Clause inconnue";
+      const cleanedAmendment = cleanAmendmentText(amendment);
+      
+      if (!cleanedAmendment) return;
 
-    if (row["Buy/Sell"] === "Sell") sellerText += formatted;
-    if (row["Buy/Sell"] === "Buy") buyerText += formatted;
-  });
+      const formattedAmendment = `- ${cleanedAmendment}`;
 
-  ["Top", "Bottom"].forEach(pos => {
-    const sellEl = document.getElementById(`amendmentSummarySell${pos}`);
-    const buyEl = document.getElementById(`amendmentSummaryBuy${pos}`);
-    if (sellEl) sellEl.innerHTML = sellerText.trim();
-    if (buyEl) buyEl.innerHTML = buyerText.trim();
-  });
-}
+      if (row["Buy/Sell"] === "Sell") {
+        if (!sellerByDepartment[department]) sellerByDepartment[department] = [];
+        sellerByDepartment[department].push(formattedAmendment);
+      }
+      
+      if (row["Buy/Sell"] === "Buy") {
+        if (!buyerByDepartment[department]) buyerByDepartment[department] = [];
+        buyerByDepartment[department].push(formattedAmendment);
+      }
+    });
+
+    // 📝 Format HTML par département
+    function formatByDepartment(dataByDept) {
+      let html = "";
+      Object.keys(dataByDept).sort().forEach(dept => {
+        html += `<div class="department-section">`;
+        html += `<div class="department-header">${dept}</div>`;
+        dataByDept[dept].forEach(amendment => {
+          html += `<div class="amendment-item">${amendment}</div>`;
+        });
+        html += `</div><br>`;
+      });
+      return html;
+    }
+
+    const sellerHTML = formatByDepartment(sellerByDepartment);
+    const buyerHTML = formatByDepartment(buyerByDepartment);
+
+    ["Top", "Bottom"].forEach(pos => {
+      const sellEl = document.getElementById(`amendmentSummarySell${pos}`);
+      const buyEl = document.getElementById(`amendmentSummaryBuy${pos}`);
+      if (sellEl) sellEl.innerHTML = sellerHTML;
+      if (buyEl) buyEl.innerHTML = buyerHTML;
+    });
+  }
 
 
+
+  // 🧹 Fonction pour vérifier si une valeur est vide ou inutile
+  function isEmptyValue(value) {
+    if (!value) return true;
+    const cleanValue = value.toString().toLowerCase().trim();
+    const emptyValues = ['nan', 'n/a', 'na', '-', '/', '', 'null', 'undefined', 'none'];
+    return emptyValues.includes(cleanValue);
+  }
+
+  // 🚢 Fonction pour détecter les Incoterms dans le texte
+  function detectIncoterms(text) {
+    if (!text || isEmptyValue(text)) return [];
+    
+    const incoterms = ['CIF', 'CFR', 'DAP', 'FOB'];
+    const detectedIncoterms = [];
+    
+    // Pattern pour détecter les Incoterms avec différents formats
+    // Ex: "CIF:", "CIF/CFR:", "(CIF):", "DAP :", etc.
+    const pattern = /\b(CIF|CFR|DAP|FOB)(?:\/([CIF|CFR|DAP|FOB]+))*\s*[\(\)]?\s*:/gi;
+    
+    let match;
+    while ((match = pattern.exec(text)) !== null) {
+      const mainTerm = match[1].toUpperCase();
+      if (incoterms.includes(mainTerm) && !detectedIncoterms.includes(mainTerm)) {
+        detectedIncoterms.push(mainTerm);
+      }
+      
+      // Si il y a des termes séparés par /
+      if (match[2]) {
+        const additionalTerms = match[2].split('/');
+        additionalTerms.forEach(term => {
+          const cleanTerm = term.trim().toUpperCase();
+          if (incoterms.includes(cleanTerm) && !detectedIncoterms.includes(cleanTerm)) {
+            detectedIncoterms.push(cleanTerm);
+          }
+        });
+      }
+    }
+    
+    return detectedIncoterms;
+  }
+
+  // 📝 Extraire le texte spécifique à un Incoterm
+  function extractIncotermText(text, incoterm) {
+    if (!text || isEmptyValue(text)) return '';
+    
+    // Pattern pour capturer le texte après un Incoterm spécifique
+    const pattern = new RegExp(`\\b${incoterm}(?:\\/[A-Z]+)*\\s*[\\(\\)]?\\s*:([^\\n]*(?:\\n(?!\\b(?:CIF|CFR|DAP|FOB))[^\\n]*)*)`);
+    const match = text.match(pattern);
+    
+    return match ? match[1].trim() : '';
+  }
+
+  // 🤖 Intelligence AI pour l'analyse des clauses
+  function analyzeClauseWithAI(clauseText, clauseType) {
+    if (!clauseText || isEmptyValue(clauseText)) return null;
+    
+    const analysis = {
+      summary: generateClauseSummary(clauseText, clauseType),
+      detectedRisk: detectRiskLevel(clauseText),
+      keywords: extractKeywords(clauseText, clauseType)
+    };
+    
+    return analysis;
+  }
+
+  function generateClauseSummary(text, type) {
+    const lowerText = text.toLowerCase();
+    const lowerType = (type || "").toLowerCase();
+    
+    // Patterns pour résumer intelligemment
+    if (lowerType.includes('payment') || lowerText.includes('payment') || lowerText.includes('credit')) {
+      return "Conditions de paiement et crédit";
+    }
+    if (lowerType.includes('delivery') || lowerText.includes('delivery') || lowerText.includes('shipping')) {
+      return "Modalités de livraison";
+    }
+    if (lowerType.includes('insurance') || lowerText.includes('insurance')) {
+      return "Couverture d'assurance";
+    }
+    if (lowerType.includes('liability') || lowerText.includes('liability')) {
+      return "Responsabilité et limitations";
+    }
+    if (lowerType.includes('force majeure') || lowerText.includes('force majeure')) {
+      return "Cas de force majeure";
+    }
+    if (lowerType.includes('sts') || lowerText.includes('ship to ship')) {
+      return "Opérations navire-à-navire";
+    }
+    
+    // Résumé générique basé sur les premiers mots
+    const words = text.split(' ').slice(0, 6).join(' ');
+    return words.length > 50 ? words.substring(0, 47) + "..." : words;
+  }
+
+  function detectRiskLevel(text) {
+    const lowerText = text.toLowerCase();
+    
+    // Mots-clés haute priorité (risque élevé)
+    const highRiskKeywords = ['unlimited', 'liability', 'penalty', 'termination', 'breach', 'default', 'force majeure exclusion'];
+    const moderateRiskKeywords = ['limitation', 'caps', 'reasonable', 'standard', 'typical'];
+    const lowRiskKeywords = ['administrative', 'notification', 'routine', 'standard practice'];
+    
+    const highRiskCount = highRiskKeywords.filter(keyword => lowerText.includes(keyword)).length;
+    const moderateRiskCount = moderateRiskKeywords.filter(keyword => lowerText.includes(keyword)).length;
+    const lowRiskCount = lowRiskKeywords.filter(keyword => lowerText.includes(keyword)).length;
+    
+    if (highRiskCount > 0) return "1"; // High
+    if (moderateRiskCount > 0) return "2"; // Moderate
+    if (lowRiskCount > 0) return "3"; // Low
+    
+    return "4"; // Informative par défaut
+  }
+
+  function extractKeywords(text, type) {
+    const keywords = [];
+    const lowerText = text.toLowerCase();
+    
+    // Tags basés sur le contenu
+    const keywordMap = {
+      'Payment': ['payment', 'credit', 'invoice', 'billing', 'financial'],
+      'Shipping': ['delivery', 'transport', 'vessel', 'cargo', 'shipping'],
+      'Insurance': ['insurance', 'coverage', 'claim', 'risk coverage'],
+      'Legal': ['liability', 'breach', 'contract', 'legal', 'compliance'],
+      'Operational': ['operation', 'procedure', 'process', 'technical'],
+      'Time': ['timeline', 'deadline', 'duration', 'period', 'delay']
+    };
+    
+    for (const [tag, words] of Object.entries(keywordMap)) {
+      if (words.some(word => lowerText.includes(word))) {
+        keywords.push(tag);
+      }
+    }
+    
+    return keywords;
+  }
 
   function cleanAmendmentText(text) {
+    if (isEmptyValue(text)) return "";
     return text
       .replace(/^[-–—]?\s*/i, '') // Supprime les tirets initiaux
       .replace(/\bwhen\s+(we|i)\s+(buy|sell)\b[:,]?\s*/gi, '') // Supprime les phrases types
@@ -708,18 +1021,52 @@ function toggleSummary(button) {
 
 function copyAllAmendments(side) {
   const pre = document.getElementById(`amendmentSummary${side === 'seller' ? 'Sell' : 'Buy'}Top`);
-  const text = pre.textContent;
+  
+  // 📝 Formater le texte pour la copie avec headers et bullet points
+  let formattedText = `===== AMENDEMENTS ${side.toUpperCase()} =====\n\n`;
+  
+  // Récupérer les sections par département
+  const departments = pre.querySelectorAll('.department-section');
+  
+  departments.forEach(section => {
+    const header = section.querySelector('.department-header');
+    const items = section.querySelectorAll('.amendment-item');
+    
+    if (header && items.length > 0) {
+      // Header de département en gras
+      formattedText += `${header.textContent.toUpperCase()}\n`;
+      formattedText += '='.repeat(header.textContent.length) + '\n\n';
+      
+      // Items en bullet points
+      items.forEach(item => {
+        const text = item.textContent.trim();
+        if (text) {
+          formattedText += `• ${text}\n`;
+        }
+      });
+      
+      formattedText += '\n';
+    }
+  });
+  
+  // Si pas de sections trouvées, utiliser le texte brut
+  if (departments.length === 0) {
+    formattedText += pre.textContent || 'Aucun amendement disponible.';
+  }
 
-  const textArea = document.createElement("textarea");
-  textArea.value = text;
-  document.body.appendChild(textArea);
-  textArea.select();
-  document.execCommand("copy");
-  document.body.removeChild(textArea);
-
-  // navigator.clipboard.writeText(text).then(() => {
-  //   alert("Amendments copiés !");
-  // });
+  // Copier dans le presse-papiers
+  if (navigator.clipboard && window.isSecureContext) {
+    navigator.clipboard.writeText(formattedText).then(() => {
+      console.log('✅ Amendements copiés au format structuré');
+    });
+  } else {
+    const textArea = document.createElement("textarea");
+    textArea.value = formattedText;
+    document.body.appendChild(textArea);
+    textArea.select();
+    document.execCommand("copy");
+    document.body.removeChild(textArea);
+  }
 }
 
 // 🎯 NEW: Helper functions for enhanced sorting and display
@@ -743,8 +1090,20 @@ function getSeverityColor(severity) {
   return colors[severity] || "#95a5a6";
 }
 
+function getRiskRecommendation(riskLevel) {
+  const recommendations = {
+    "1": "⚠️ Attention immédiate requise. Consultez l'équipe juridique avant signature.",
+    "2": "📋 Révision recommandée. Vérifiez les implications opérationnelles.",
+    "3": "✅ Risque acceptable. Procédures standard suffisantes.",
+    "4": "ℹ️ Information uniquement. Aucune action particulière requise."
+  };
+  return recommendations[riskLevel] || "Évaluation manuelle recommandée.";
+}
+
 // 🤖 CHATBOT FUNCTIONALITY
 function initializeChatbot() {
+  console.log('🤖 Initialisation du chatbot...');
+  
   const chatbotFab = document.getElementById('chatbot-fab');
   const chatbotContainer = document.getElementById('chatbot-container');
   const chatbotToggle = document.getElementById('chatbot-toggle');
@@ -753,15 +1112,32 @@ function initializeChatbot() {
   const chatbotMessages = document.getElementById('chatbot-messages');
   const quickActionBtns = document.querySelectorAll('.quick-action-btn');
 
+  // Vérifications de sécurité
+  if (!chatbotFab || !chatbotContainer || !chatbotToggle || !chatbotInput || !chatbotSend || !chatbotMessages) {
+    console.error('❌ Éléments du chatbot non trouvés:', {
+      fab: !!chatbotFab,
+      container: !!chatbotContainer,
+      toggle: !!chatbotToggle,
+      input: !!chatbotInput,
+      send: !!chatbotSend,
+      messages: !!chatbotMessages
+    });
+    return;
+  }
+
+  console.log('✅ Tous les éléments du chatbot trouvés');
   let chatbotVisible = false;
 
   // Toggle chatbot visibility
   function toggleChatbot() {
+    console.log('🔄 Toggle chatbot, état actuel:', chatbotVisible);
     chatbotVisible = !chatbotVisible;
     chatbotContainer.classList.toggle('active', chatbotVisible);
+    console.log('🔄 Nouvel état:', chatbotVisible);
     
     if (chatbotVisible) {
-      chatbotInput.focus();
+      console.log('👁️ Chatbot ouvert, focus sur input');
+      setTimeout(() => chatbotInput.focus(), 100);
       // Hide notification after opening
       const notification = document.querySelector('.chatbot-notification');
       if (notification) {
@@ -770,20 +1146,36 @@ function initializeChatbot() {
     }
   }
 
-  // Event listeners
-  chatbotFab.addEventListener('click', toggleChatbot);
-  chatbotToggle.addEventListener('click', toggleChatbot);
+  // Event listeners avec debug
+  console.log('🔗 Ajout des event listeners...');
+  
+  chatbotFab.addEventListener('click', (e) => {
+    console.log('🔵 Clic sur FAB');
+    e.preventDefault();
+    toggleChatbot();
+  });
+  
+  chatbotToggle.addEventListener('click', (e) => {
+    console.log('🔘 Clic sur Toggle');
+    e.preventDefault();
+    toggleChatbot();
+  });
 
   // Quick action buttons
-  quickActionBtns.forEach(btn => {
-    btn.addEventListener('click', () => {
+  quickActionBtns.forEach((btn, index) => {
+    console.log(`🚀 Quick action button ${index}:`, btn);
+    btn.addEventListener('click', (e) => {
+      e.preventDefault();
       const query = btn.getAttribute('data-query');
+      console.log('🏃 Quick action:', query);
       handleUserMessage(query);
     });
   });
 
   // Send message on button click
-  chatbotSend.addEventListener('click', () => {
+  chatbotSend.addEventListener('click', (e) => {
+    console.log('📤 Clic sur Send');
+    e.preventDefault();
     const message = chatbotInput.value.trim();
     if (message) {
       handleUserMessage(message);
@@ -794,6 +1186,7 @@ function initializeChatbot() {
   // Send message on Enter key
   chatbotInput.addEventListener('keypress', (e) => {
     if (e.key === 'Enter' && !e.shiftKey) {
+      console.log('⌨️ Enter pressé');
       e.preventDefault();
       const message = chatbotInput.value.trim();
       if (message) {
@@ -802,16 +1195,40 @@ function initializeChatbot() {
       }
     }
   });
+  
+  console.log('✅ Event listeners ajoutés avec succès');
 
   // Handle user messages
-  function handleUserMessage(message) {
+  async function handleUserMessage(message) {
+    console.log('📤 Message utilisateur:', message);
     addMessage(message, 'user');
     
-    // Simulate thinking delay
-    setTimeout(() => {
-      const response = generateBotResponse(message);
-      addMessage(response, 'bot');
-    }, 500);
+    // Vérifier si on a une API configurée pour une vraie conversation
+    const config = JSON.parse(sessionStorage.getItem('ai_config') || '{}');
+    
+    if (config.apiKey && message.toLowerCase().includes('ai:')) {
+      // Mode conversation AI réelle
+      const aiMessage = message.replace(/ai:/i, '').trim();
+      try {
+        addMessage('🤖 Consultation de l\'IA en cours...', 'bot');
+        const aiResponse = await callAIAPI(aiMessage);
+        // Remplacer le message de chargement
+        const messages = document.querySelectorAll('.bot-message');
+        const lastMessage = messages[messages.length - 1];
+        if (lastMessage) {
+          lastMessage.querySelector('.message-content').innerHTML = `<p><strong>🤖 Réponse IA :</strong></p><p>${aiResponse}</p>`;
+        }
+      } catch (error) {
+        addMessage(`❌ Erreur API : ${error.message}. Essayez "config" pour configurer l'API.`, 'bot');
+      }
+    } else {
+      // Mode réponses locales classiques
+      setTimeout(() => {
+        const response = generateBotResponse(message);
+        console.log('🤖 Réponse bot:', response);
+        addMessage(response, 'bot');
+      }, 500);
+    }
   }
 
   // Add message to chat
@@ -842,171 +1259,238 @@ function initializeChatbot() {
 
   // Generate bot responses based on user input
   function generateBotResponse(message) {
-    const lowerMessage = message.toLowerCase();
+    console.log('🤖 Génération de réponse pour:', message);
     
-    // Risk severity explanations
-    if (lowerMessage.includes('high risk') || lowerMessage.includes('red') || lowerMessage.includes('severity 1')) {
-      return `
-        <p><strong>🔴 High Risk (Level 1)</strong></p>
-        <p>High risk clauses require immediate attention and careful consideration:</p>
-        <ul>
-          <li><strong>Impact:</strong> Could significantly affect contract performance or expose the company to substantial liability</li>
-          <li><strong>Action Required:</strong> Should be reviewed by legal and commercial teams</li>
-          <li><strong>Examples:</strong> Unlimited liability clauses, force majeure exclusions, critical delivery terms</li>
-          <li><strong>Mitigation:</strong> Consider amendments or additional insurance coverage</li>
-        </ul>
-        <p>Always escalate high-risk clauses to senior management for approval.</p>
-      `;
-    }
+    try {
+      const lowerMessage = message.toLowerCase();
+      
+      // Configuration API
+      if (lowerMessage.includes('config') || lowerMessage.includes('api') || lowerMessage.includes('clé')) {
+        setupAPIKey();
+        return '<p>🔑 Configuration de l\'API ouverte ! Pour utiliser l\'IA avancée, tapez "ai: votre question" après avoir configuré votre clé.</p>';
+      }
 
-    if (lowerMessage.includes('moderate risk') || lowerMessage.includes('yellow') || lowerMessage.includes('severity 2')) {
-      return `
-        <p><strong>🟡 Moderate Risk (Level 2)</strong></p>
-        <p>Moderate risk clauses need careful review but are generally manageable:</p>
-        <ul>
-          <li><strong>Impact:</strong> May affect operations but with limited financial exposure</li>
-          <li><strong>Action Required:</strong> Review terms and assess mitigation options</li>
-          <li><strong>Examples:</strong> Standard liability caps, typical warranty terms, routine compliance requirements</li>
-          <li><strong>Mitigation:</strong> Standard business practices usually sufficient</li>
-        </ul>
-        <p>Document any concerns and ensure operational teams are aware of obligations.</p>
-      `;
-    }
+      // Test simple first
+      if (lowerMessage.includes('test') || lowerMessage.includes('hello') || lowerMessage.includes('salut')) {
+        const config = JSON.parse(sessionStorage.getItem('ai_config') || '{}');
+        const apiStatus = config.apiKey ? '✅ API configurée' : '❌ API non configurée (tapez "config")';
+        return `<p>🤖 Chatbot opérationnel ! ${apiStatus}</p><p>Pour une IA avancée, tapez "ai: votre question"</p>`;
+      }
+      
+      // Risk severity explanations
+      if (lowerMessage.includes('high risk') || lowerMessage.includes('red') || lowerMessage.includes('risque élevé')) {
+        return '<p><strong>🔴 Risque Élevé</strong></p><p>Les clauses à risque élevé nécessitent une attention immédiate et une évaluation approfondie par les équipes juridiques et commerciales.</p>';
+      }
 
-    if (lowerMessage.includes('low risk') || lowerMessage.includes('green') || lowerMessage.includes('severity 3')) {
-      return `
-        <p><strong>🟢 Low Risk (Level 3)</strong></p>
-        <p>Low risk clauses are generally acceptable with minimal impact:</p>
-        <ul>
-          <li><strong>Impact:</strong> Minimal effect on operations or financial exposure</li>
-          <li><strong>Action Required:</strong> Standard review and documentation</li>
-          <li><strong>Examples:</strong> Administrative procedures, standard reporting requirements</li>
-          <li><strong>Mitigation:</strong> Normal business processes adequate</li>
-        </ul>
-        <p>These clauses typically require no special handling beyond standard compliance.</p>
-      `;
-    }
+      if (lowerMessage.includes('moderate risk') || lowerMessage.includes('yellow') || lowerMessage.includes('risque modéré')) {
+        return '<p><strong>🟡 Risque Modéré</strong></p><p>Les clauses à risque modéré nécessitent un examen attentif mais sont généralement gérables avec les pratiques commerciales standard.</p>';
+      }
 
-    if (lowerMessage.includes('informative') || lowerMessage.includes('blue') || lowerMessage.includes('severity 4') || lowerMessage.includes('severity 0')) {
-      return `
-        <p><strong>🔵 Informative (Level 4/0)</strong></p>
-        <p>Informative items are for awareness only:</p>
-        <ul>
-          <li><strong>Purpose:</strong> Provide context and background information</li>
-          <li><strong>Action Required:</strong> Read and acknowledge</li>
-          <li><strong>Examples:</strong> Definitions, standard market practices, reference materials</li>
-          <li><strong>Impact:</strong> No direct operational or financial implications</li>
-        </ul>
-        <p>These are included for completeness and better understanding of contract context.</p>
-      `;
-    }
+      if (lowerMessage.includes('low risk') || lowerMessage.includes('green') || lowerMessage.includes('risque faible')) {
+        return '<p><strong>🟢 Risque Faible</strong></p><p>Les clauses à risque faible sont généralement acceptables avec un impact minimal sur les opérations.</p>';
+      }
 
-    // Back to Back explanations
-    if (lowerMessage.includes('back to back') || lowerMessage.includes('b2b')) {
-      return `
-        <p><strong>🔄 Back to Back Contracts</strong></p>
-        <p>Back to back means using the same GTC and Incoterm for both buying and selling:</p>
-        <ul>
-          <li><strong>Purpose:</strong> Minimize risk by aligning contract terms</li>
-          <li><strong>Benefits:</strong> Reduced exposure to conflicting obligations</li>
-          <li><strong>Process:</strong> When one GTC is selected, the system automatically suggests the same for the counterpart</li>
-          <li><strong>Considerations:</strong> May limit flexibility but provides better risk control</li>
-        </ul>
-        <p>Enable the "Back to Back" checkbox to automatically synchronize GTC selections.</p>
-      `;
-    }
+      if (lowerMessage.includes('informative') || lowerMessage.includes('blue') || lowerMessage.includes('informatif')) {
+        return '<p><strong>🔵 Informatif</strong></p><p>Les éléments informatifs sont fournis pour information et contexte uniquement.</p>';
+      }
 
-    // GTC explanations
-    if (lowerMessage.includes('gtc') || lowerMessage.includes('general terms')) {
-      return `
-        <p><strong>📋 General Terms and Conditions (GTCs)</strong></p>
-        <p>GTCs are standardized contract templates that define:</p>
-        <ul>
-          <li><strong>Scope:</strong> General obligations, rights, and procedures</li>
-          <li><strong>Risk Allocation:</strong> How risks are distributed between parties</li>
-          <li><strong>Operational Terms:</strong> Delivery, payment, and performance requirements</li>
-          <li><strong>Legal Framework:</strong> Dispute resolution and governing law</li>
-        </ul>
-        <p>Different GTCs may have varying risk profiles for the same transaction type. Use this tool to compare and understand the implications of each GTC selection.</p>
-      `;
-    }
+      // Back to Back explanations
+      if (lowerMessage.includes('back to back') || lowerMessage.includes('b2b') || lowerMessage.includes('dos-à-dos')) {
+        return '<p><strong>🔄 Contrats Dos-à-Dos</strong></p><p>Utiliser les mêmes GTC et Incoterms pour l\'achat et la vente afin de minimiser les risques en alignant les termes contractuels.</p>';
+      }
 
-    // Incoterms explanations
-    if (lowerMessage.includes('incoterm') || lowerMessage.includes('fob') || lowerMessage.includes('cif') || lowerMessage.includes('dap')) {
-      return `
-        <p><strong>🚢 Incoterms Explained</strong></p>
-        <p>Incoterms define the distribution of costs, risks, and responsibilities:</p>
-        <ul>
-          <li><strong>FOB:</strong> Free on Board - Seller delivers when goods pass ship's rail</li>
-          <li><strong>CIF:</strong> Cost, Insurance & Freight - Seller pays for shipping and insurance</li>
-          <li><strong>CFR:</strong> Cost & Freight - Seller pays freight but not insurance</li>
-          <li><strong>DAP:</strong> Delivered at Place - Seller delivers to named destination</li>
-        </ul>
-        <p>Different Incoterms affect risk transfer points and cost responsibilities. Select appropriate terms based on your risk appetite and operational capabilities.</p>
-      `;
-    }
+      // GTC explanations
+      if (lowerMessage.includes('gtc') || lowerMessage.includes('general terms')) {
+        return '<p><strong>📋 Conditions Générales (GTCs)</strong></p><p>Les GTCs sont des modèles de contrats standardisés qui définissent les obligations, droits et procédures générales.</p>';
+      }
 
-    // Amendment guidance
-    if (lowerMessage.includes('amendment') || lowerMessage.includes('special condition')) {
-      return `
-        <p><strong>📝 Contract Amendments</strong></p>
-        <p>Amendments modify standard GTC terms to address specific risks:</p>
-        <ul>
-          <li><strong>Purpose:</strong> Tailor contracts to specific transaction requirements</li>
-          <li><strong>Implementation:</strong> Add special conditions that override standard terms</li>
-          <li><strong>Review:</strong> Ensure amendments are clear and legally sound</li>
-          <li><strong>Documentation:</strong> Copy amendments using the built-in copy buttons</li>
-        </ul>
-        <p>Use the amendment summary sections to review all proposed changes before finalizing contracts.</p>
-      `;
-    }
+      // Incoterms explanations
+      if (lowerMessage.includes('incoterm') || lowerMessage.includes('fob') || lowerMessage.includes('cif') || lowerMessage.includes('dap')) {
+        return '<p><strong>🚢 Incoterms</strong></p><p>Les Incoterms définissent la répartition des coûts, risques et responsabilités. FOB, CIF, CFR, DAP ont des points de transfert de risque différents.</p>';
+      }
 
-    // How to use the tool
-    if (lowerMessage.includes('how to') || lowerMessage.includes('help') || lowerMessage.includes('guide')) {
-      return `
-        <p><strong>🎯 How to Use This Tool</strong></p>
-        <p>Follow these steps for effective risk analysis:</p>
-        <ol>
-          <li><strong>Select GTCs:</strong> Choose your buying and selling GTCs</li>
-          <li><strong>Choose Incoterms:</strong> Select applicable delivery terms</li>
-          <li><strong>Filter by Risk:</strong> Click severity pills to focus on specific risk levels</li>
-          <li><strong>Review Clauses:</strong> Examine highlighted clauses and their risk implications</li>
-          <li><strong>Use Amendments:</strong> Copy suggested amendments for contract modifications</li>
-          <li><strong>Enable Back-to-Back:</strong> For simplified risk management</li>
-        </ol>
-        <p>The tool automatically sorts results by risk level (red, yellow, green, blue) for easy prioritization.</p>
-      `;
-    }
+      // Amendment guidance
+      if (lowerMessage.includes('amendment') || lowerMessage.includes('amendement') || lowerMessage.includes('condition spéciale')) {
+        return '<p><strong>📝 Amendements de Contrat</strong></p><p>Les amendements modifient les termes GTC standards pour adresser des risques spécifiques. Utilisez les boutons de copie intégrés.</p>';
+      }
 
-    // Department/Category guidance
-    if (lowerMessage.includes('department') || lowerMessage.includes('category') || lowerMessage.includes('sts') || lowerMessage.includes('logistics')) {
-      return `
-        <p><strong>🏢 Department Categories</strong></p>
-        <p>Clauses are organized by relevant departments:</p>
-        <ul>
-          <li><strong>STS:</strong> Ship-to-Ship operations and marine logistics</li>
-          <li><strong>Logistics:</strong> Transportation and delivery coordination</li>
-          <li><strong>Commercial:</strong> Pricing, payment, and business terms</li>
-          <li><strong>Legal:</strong> Compliance, liability, and dispute resolution</li>
-          <li><strong>Operations:</strong> Technical specifications and performance standards</li>
-        </ul>
-        <p>Filter by department to focus on clauses relevant to your role and responsibilities.</p>
-      `;
-    }
+      // How to use the tool
+      if (lowerMessage.includes('help') || lowerMessage.includes('aide') || lowerMessage.includes('comment')) {
+        return '<p><strong>🎯 Comment Utiliser cet Outil</strong></p><p>1. Sélectionnez vos GTCs<br>2. Choisissez les Incoterms<br>3. Filtrez par niveau de risque<br>4. Examinez les clauses<br>5. Copiez les amendements</p>';
+      }
 
-    // Default response for unrecognized queries
-    return `
-      <p>I understand you're asking about: "<em>${message}</em>"</p>
-      <p>I can help you with:</p>
+      // 🤖 Analyse intelligente des clauses
+      if (lowerMessage.includes('analyse') || lowerMessage.includes('analyser')) {
+        return '<p><strong>🤖 Analyse de Clause</strong></p><p>Copiez le texte d\'une clause dans le chat et je pourrai vous fournir:</p><ul><li>Un résumé intelligent</li><li>Une évaluation du niveau de risque</li><li>Des mots-clés thématiques</li><li>Des recommandations</li></ul>';
+      }
+
+      // Si le message semble être une clause à analyser (texte long)
+      if (message.length > 50 && !lowerMessage.includes('comment') && !lowerMessage.includes('aide')) {
+        const analysis = analyzeClauseWithAI(message, 'Manuel');
+        if (analysis) {
+          return `<p><strong>🤖 Analyse de votre clause:</strong></p>
+          <p><strong>Résumé:</strong> ${analysis.summary}</p>
+          <p><strong>Niveau de risque détecté:</strong> ${getSeverityDisplayLabel(analysis.detectedRisk)}</p>
+          <p><strong>Mots-clés:</strong> ${analysis.keywords.join(', ')}</p>
+          <p><strong>Recommandation:</strong> ${getRiskRecommendation(analysis.detectedRisk)}</p>`;
+        }
+      }
+
+      // Default response for unrecognized queries
+      return `<p>Je comprends que vous demandez: "<em>${message}</em>"</p>
+      <p>Je peux vous aider avec:</p>
       <ul>
-        <li>🔴 Risk severity levels (High, Moderate, Low, Informative)</li>
-        <li>📋 GTC comparisons and implications</li>
-        <li>🚢 Incoterm explanations (FOB, CIF, CFR, DAP)</li>
-        <li>🔄 Back-to-back contract strategies</li>
-        <li>📝 Amendment and special condition guidance</li>
-        <li>🎯 How to use this risk analysis tool</li>
+        <li>🔴 Niveaux de risque (Élevé, Modéré, Faible, Informatif)</li>
+        <li>📋 Comparaisons de GTC et implications</li>
+        <li>🚢 Explications Incoterms (FOB, CIF, CFR, DAP)</li>
+        <li>🔄 Stratégies de contrats dos-à-dos</li>
+        <li>📝 Guide des amendements et conditions spéciales</li>
+        <li>🎯 Comment utiliser cet outil d'analyse des risques</li>
+        <li>🤖 Analyse intelligente de clauses (copiez le texte d\'une clause)</li>
       </ul>
-      <p>Try asking about any of these topics, or use the quick action buttons below!</p>
-    `;
+      <p>Essayez de poser une question sur ces sujets, ou utilisez les boutons d'action rapide!</p>`;
+    } catch (error) {
+      console.error('❌ Erreur dans generateBotResponse:', error);
+      return `<p>Désolé, une erreur s'est produite. Essayez de reformuler votre question.</p>`;
+    }
   }
+
+  // 🌐 Configuration API pour ChatGPT/Copilot
+  const AI_CONFIG = {
+    provider: 'openai', // 'openai' ou 'azure' pour Copilot
+    apiKey: '', // À configurer par l'utilisateur
+    endpoint: 'https://api.openai.com/v1/chat/completions',
+    model: 'gpt-3.5-turbo'
+  };
+
+  // 🔑 Fonction pour configurer l'API Key
+  function setupAPIKey() {
+    const modal = document.createElement('div');
+    modal.className = 'api-config-modal';
+    modal.innerHTML = `
+      <div class="modal-content">
+        <h3>🔑 Configuration API IA</h3>
+        <p>Pour activer les discussions avec l'IA, configurez votre clé API :</p>
+        
+        <label>
+          <strong>Fournisseur :</strong>
+          <select id="aiProvider">
+            <option value="openai">OpenAI ChatGPT</option>
+            <option value="azure">Microsoft Copilot (Azure)</option>
+          </select>
+        </label>
+        
+        <label>
+          <strong>Clé API :</strong>
+          <input type="password" id="apiKeyInput" placeholder="sk-..." />
+        </label>
+        
+        <label>
+          <strong>Endpoint (optionnel) :</strong>
+          <input type="text" id="endpointInput" placeholder="https://api.openai.com/v1/chat/completions" />
+        </label>
+        
+        <div class="modal-buttons">
+          <button onclick="saveAPIConfig()">💾 Sauvegarder</button>
+          <button onclick="closeAPIModal()">❌ Annuler</button>
+          <button onclick="testAPIConnection()">🧪 Tester</button>
+        </div>
+      </div>
+    `;
+    
+    document.body.appendChild(modal);
+  }
+
+  // 💾 Sauvegarder la configuration API
+  function saveAPIConfig() {
+    const provider = document.getElementById('aiProvider').value;
+    const apiKey = document.getElementById('apiKeyInput').value;
+    const endpoint = document.getElementById('endpointInput').value;
+    
+    if (apiKey) {
+      AI_CONFIG.provider = provider;
+      AI_CONFIG.apiKey = apiKey;
+      if (endpoint) AI_CONFIG.endpoint = endpoint;
+      
+      // Sauvegarde locale sécurisée (session seulement)
+      sessionStorage.setItem('ai_config', JSON.stringify(AI_CONFIG));
+      
+      alert('✅ Configuration sauvegardée pour cette session !');
+      closeAPIModal();
+    } else {
+      alert('❌ Veuillez saisir une clé API valide.');
+    }
+  }
+
+  // 🧪 Tester la connexion API
+  async function testAPIConnection() {
+    const apiKey = document.getElementById('apiKeyInput').value;
+    if (!apiKey) {
+      alert('❌ Veuillez saisir une clé API d\'abord.');
+      return;
+    }
+    
+    try {
+      const response = await callAIAPI('Hello, test de connexion.', apiKey);
+      if (response) {
+        alert('✅ Connexion API réussie !');
+      } else {
+        alert('❌ Échec de la connexion. Vérifiez votre clé API.');
+      }
+    } catch (error) {
+      alert(`❌ Erreur de connexion: ${error.message}`);
+    }
+  }
+
+  // 🤖 Appel à l'API IA
+  async function callAIAPI(message, apiKey = null) {
+    const config = JSON.parse(sessionStorage.getItem('ai_config') || '{}');
+    const keyToUse = apiKey || config.apiKey || AI_CONFIG.apiKey;
+    
+    if (!keyToUse) {
+      throw new Error('Clé API non configurée');
+    }
+    
+    const requestBody = {
+      model: config.model || AI_CONFIG.model,
+      messages: [
+        {
+          role: "system",
+          content: "Tu es un assistant expert en analyse de risques contractuels et GTCs. Tu aides les utilisateurs à comprendre et analyser les clauses contractuelles."
+        },
+        {
+          role: "user",
+          content: message
+        }
+      ],
+      max_tokens: 500,
+      temperature: 0.7
+    };
+    
+    const response = await fetch(config.endpoint || AI_CONFIG.endpoint, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${keyToUse}`
+      },
+      body: JSON.stringify(requestBody)
+    });
+    
+    if (!response.ok) {
+      throw new Error(`API Error: ${response.status}`);
+    }
+    
+    const data = await response.json();
+    return data.choices[0]?.message?.content || 'Pas de réponse de l\'IA.';
+  }
+
+  function closeAPIModal() {
+    const modal = document.querySelector('.api-config-modal');
+    if (modal) modal.remove();
+  }
+
+  // Rendre les fonctions globales
+  window.saveAPIConfig = saveAPIConfig;
+  window.closeAPIModal = closeAPIModal;
+  window.testAPIConnection = testAPIConnection;
 }
